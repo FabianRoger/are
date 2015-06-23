@@ -164,24 +164,6 @@ for (L in Lakes) {
   }
 }
 
-################ average Biomass at sampling date ###########
-
-Slopes_avEPmr <- Slopes_avEPNC <- Slopes_avBM  <-  data.frame(Lake = rep(Lakes, each=9), DAT = rep(rep(DAT,each=3),4),
-                                                           DIV = rep(DIV_ind,12), medSlope = NA, meanSlope = NA,
-                                                           minSl = NA, maxSl = NA)
-
-for (L in Lakes) {
-  for (D in DAT) {
-    for (V in DIV_ind) {
-      BOOT <- boot(data= avBM[avBM$Lake == L & avBM$DAT == D,] , boot_Slope , R=R, V=V, Y="Cells")
-      Slopes_avBM [Slopes_avBM$Lake == L & Slopes_avBM$DAT == D & Slopes_avBM$DIV == V ,]$medSlope <- median(BOOT$t[,1]) # median slope
-      Slopes_avBM [Slopes_avBM$Lake == L & Slopes_avBM$DAT == D & Slopes_avBM$DIV == V ,]$meanSlope <- mean(BOOT$t[,1]) # mean slope
-      Slopes_avBM [Slopes_avBM$Lake == L & Slopes_avBM$DAT == D & Slopes_avBM$DIV == V ,]$minSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
-      Slopes_avBM [Slopes_avBM$Lake == L & Slopes_avBM$DAT == D & Slopes_avBM$DIV == V ,]$maxSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # av slope
-    }
-  }
-}
-
 
 ################ Stability - CV ###########
 
@@ -213,22 +195,6 @@ for (L in Lakes) {
   }
 }
 
-########## Sampling NC ##########
-
-#Slopes_avEPNC
-
-for (L in Lakes) {
-  for (D in DAT) {
-    for (V in DIV_ind) {
-      BOOT <- boot(data= EP[EP$Lake == L & EP$DAT == D,] , boot_Slope , R=R, V=V, Y="NC")
-      Slopes_avEPNC [Slopes_avEPNC$Lake == L & Slopes_avEPNC$DAT == D & Slopes_avEPNC$DIV == V ,]$medSlope <- median(BOOT$t[,1]) # median slope
-      Slopes_avEPNC [Slopes_avEPNC$Lake == L & Slopes_avEPNC$DAT == D & Slopes_avEPNC$DIV == V ,]$meanSlope <- mean(BOOT$t[,1]) # mean slope
-      Slopes_avEPNC [Slopes_avEPNC$Lake == L & Slopes_avEPNC$DAT == D & Slopes_avEPNC$DIV == V ,]$minSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
-      Slopes_avEPNC [Slopes_avEPNC$Lake == L & Slopes_avEPNC$DAT == D & Slopes_avEPNC$DIV == V ,]$maxSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # av slope
-    }
-  }
-}
-
 
 ########## average uptake rate ##########
 
@@ -244,21 +210,7 @@ for (L in Lakes) {
   }
 }
 
-########## sampling day uptake rate ##########
 
-#Slopes_avEPmr
-
-for (L in Lakes) {
-  for (D in DAT) {
-    for (V in DIV_ind) {
-      BOOT <- boot(data= EP[EP$Lake == L & EP$DAT == D,] , boot_Slope , R=R, V=V, Y="mean.r")
-      Slopes_avEPmr [Slopes_avEPmr$Lake == L & Slopes_avEPmr$DAT == D & Slopes_avEPmr$DIV == V ,]$medSlope <- median(BOOT$t[,1]) # median slope
-      Slopes_avEPmr [Slopes_avEPmr$Lake == L & Slopes_avEPmr$DAT == D & Slopes_avEPmr$DIV == V ,]$meanSlope <- mean(BOOT$t[,1]) # mean slope
-      Slopes_avEPmr [Slopes_avEPmr$Lake == L & Slopes_avEPmr$DAT == D & Slopes_avEPmr$DIV == V ,]$minSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
-      Slopes_avEPmr [Slopes_avEPmr$Lake == L & Slopes_avEPmr$DAT == D & Slopes_avEPmr$DIV == V ,]$maxSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # av slope
-    }
-  }
-}
 
 ################# Nutrients ################
 
@@ -295,16 +247,6 @@ G1 <- ggplot(Slopes_maxBM , aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax
   scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
   labs(title="maximum Biomass",x="Slope")
 
-G1_2 <- ggplot(Slopes_avBM , aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
-  geom_point(size=3)+
-  facet_wrap(~Lake*DAT,nrow=4)+
-  geom_vline(xintercept=0, linetype="dashed")+
-  geom_errorbarh(height=0)+
-  theme_bw(base_size=15)+
-  theme(legend.position="none")+
-  # scale_x_continuous(limits = c(-1, 1),breaks=c(-1,0,1))+
-  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
-  labs(title="maximum Biomass",x="Slope")
 
 G2 <- ggplot(SlopesEPNC, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
   geom_point(size=3)+
@@ -317,16 +259,6 @@ G2 <- ggplot(SlopesEPNC, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=ma
   scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
   labs(title="Number of C sources", x="Slope")
 
-G2_2 <- ggplot(Slopes_avEPNC , aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
-  geom_point(size=3)+
-  facet_wrap(~Lake*DAT,nrow=4)+
-  geom_vline(xintercept=0, linetype="dashed")+
-  geom_errorbarh(height=0)+
-  theme_bw(base_size=15)+
-  theme(legend.position="none")+
-  # scale_x_continuous(limits = c(-1, 1),breaks=c(-1,0,1))+
-  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
-  labs(title="Number of C sources",x="Slope")
 
 G3 <- ggplot(SlopesEPmr, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
   geom_point(size=3)+
@@ -338,17 +270,6 @@ G3 <- ggplot(SlopesEPmr, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=ma
   scale_x_continuous(limits = c(-1, 1), breaks=c(-1,0,1))+
   scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
   labs(title="mean carbon uptake rate", x="Slope")
-
-G3_2 <- ggplot(Slopes_avEPmr , aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
-  geom_point(size=3)+
-  facet_wrap(~Lake*DAT,nrow=4)+
-  geom_vline(xintercept=0, linetype="dashed")+
-  geom_errorbarh(height=0)+
-  theme_bw(base_size=15)+
-  theme(legend.position="none")+
-  # scale_x_continuous(limits = c(-1, 1),breaks=c(-1,0,1))+
-  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
-  labs(title="mean carbon uptake rate",x="Slope")
 
 
 G4 <- ggplot(SlopesCV, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
@@ -375,11 +296,108 @@ G5 <- ggplot(SlopesDIN, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=max
   labs(title="nutrient depletion (DIN)", x="Slope")
 
 grid.arrange(G1,G2,G3,G4,G5)
-grid.arrange(G1_2,G2_2,G3_2)
+
 
 #save.image("bootstrap_10000.RData")
 
 
+#################### with alternative EF and by DATE where possible ##############
+
+
+
+
+################# Biomass ###############
+
+################ average Biomass at sampling date ###########
+
+Slopes_avEPmr <- Slopes_avEPNC <- Slopes_avBM  <-  data.frame(Lake = rep(Lakes, each=9), DAT = rep(rep(DAT,each=3),4),
+                                                              DIV = rep(DIV_ind,12), medSlope = NA, meanSlope = NA,
+                                                              minSl = NA, maxSl = NA)
+
+for (L in Lakes) {
+  for (D in DAT) {
+    for (V in DIV_ind) {
+      BOOT <- boot(data= avBM[avBM$Lake == L & avBM$DAT == D,] , boot_Slope , R=R, V=V, Y="Cells")
+      Slopes_avBM [Slopes_avBM$Lake == L & Slopes_avBM$DAT == D & Slopes_avBM$DIV == V ,]$medSlope <- median(BOOT$t[,1]) # median slope
+      Slopes_avBM [Slopes_avBM$Lake == L & Slopes_avBM$DAT == D & Slopes_avBM$DIV == V ,]$meanSlope <- mean(BOOT$t[,1]) # mean slope
+      Slopes_avBM [Slopes_avBM$Lake == L & Slopes_avBM$DAT == D & Slopes_avBM$DIV == V ,]$minSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
+      Slopes_avBM [Slopes_avBM$Lake == L & Slopes_avBM$DAT == D & Slopes_avBM$DIV == V ,]$maxSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # av slope
+    }
+  }
+}
+
+################# EcoLog.txt ###############
+
+########## Sampling NC ##########
+
+#Slopes_avEPNC
+
+for (L in Lakes) {
+  for (D in DAT) {
+    for (V in DIV_ind) {
+      BOOT <- boot(data= EP[EP$Lake == L & EP$DAT == D,] , boot_Slope , R=R, V=V, Y="NC")
+      Slopes_avEPNC [Slopes_avEPNC$Lake == L & Slopes_avEPNC$DAT == D & Slopes_avEPNC$DIV == V ,]$medSlope <- median(BOOT$t[,1]) # median slope
+      Slopes_avEPNC [Slopes_avEPNC$Lake == L & Slopes_avEPNC$DAT == D & Slopes_avEPNC$DIV == V ,]$meanSlope <- mean(BOOT$t[,1]) # mean slope
+      Slopes_avEPNC [Slopes_avEPNC$Lake == L & Slopes_avEPNC$DAT == D & Slopes_avEPNC$DIV == V ,]$minSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
+      Slopes_avEPNC [Slopes_avEPNC$Lake == L & Slopes_avEPNC$DAT == D & Slopes_avEPNC$DIV == V ,]$maxSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # av slope
+    }
+  }
+}
+
+########## sampling day uptake rate ##########
+
+#Slopes_avEPmr
+
+for (L in Lakes) {
+  for (D in DAT) {
+    for (V in DIV_ind) {
+      BOOT <- boot(data= EP[EP$Lake == L & EP$DAT == D,] , boot_Slope , R=R, V=V, Y="mean.r")
+      Slopes_avEPmr [Slopes_avEPmr$Lake == L & Slopes_avEPmr$DAT == D & Slopes_avEPmr$DIV == V ,]$medSlope <- median(BOOT$t[,1]) # median slope
+      Slopes_avEPmr [Slopes_avEPmr$Lake == L & Slopes_avEPmr$DAT == D & Slopes_avEPmr$DIV == V ,]$meanSlope <- mean(BOOT$t[,1]) # mean slope
+      Slopes_avEPmr [Slopes_avEPmr$Lake == L & Slopes_avEPmr$DAT == D & Slopes_avEPmr$DIV == V ,]$minSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
+      Slopes_avEPmr [Slopes_avEPmr$Lake == L & Slopes_avEPmr$DAT == D & Slopes_avEPmr$DIV == V ,]$maxSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # av slope
+    }
+  }
+}
+
+##############################################################################################################################
+
+G1_2 <- ggplot(Slopes_avBM , aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
+  geom_point(size=3)+
+  facet_wrap(~Lake*DAT,nrow=4)+
+  geom_vline(xintercept=0, linetype="dashed")+
+  geom_errorbarh(height=0)+
+  theme_bw(base_size=15)+
+  theme(legend.position="none")+
+  # scale_x_continuous(limits = c(-1, 1),breaks=c(-1,0,1))+
+  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
+  labs(title="maximum Biomass",x="Slope")
+
+
+G2_2 <- ggplot(Slopes_avEPNC , aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
+  geom_point(size=3)+
+  facet_wrap(~Lake*DAT,nrow=4)+
+  geom_vline(xintercept=0, linetype="dashed")+
+  geom_errorbarh(height=0)+
+  theme_bw(base_size=15)+
+  theme(legend.position="none")+
+  # scale_x_continuous(limits = c(-1, 1),breaks=c(-1,0,1))+
+  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
+  labs(title="Number of C sources",x="Slope")
+
+G3_2 <- ggplot(Slopes_avEPmr , aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
+  geom_point(size=3)+
+  facet_wrap(~Lake*DAT,nrow=4)+
+  geom_vline(xintercept=0, linetype="dashed")+
+  geom_errorbarh(height=0)+
+  theme_bw(base_size=15)+
+  theme(legend.position="none")+
+  # scale_x_continuous(limits = c(-1, 1),breaks=c(-1,0,1))+
+  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
+  labs(title="mean carbon uptake rate",x="Slope")
+
+
+grid.arrange(G1_2,G2_2,G3_2)
 
 
 
