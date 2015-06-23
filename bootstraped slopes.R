@@ -11,7 +11,7 @@ DIV<-read.table("Diversity_5000_100p.txt",stringsAsFactors=F)
 PD <- read.table("PhyloDiv.txt", stringsAsFactors=F)
 
 
-DIV<-join(ID,DIV)
+DIV<-join(ID,DIV) 
 DIV <- join(DIV,PD)
 
 
@@ -113,6 +113,9 @@ NUT <- read.table("Nut.txt", sep="\t", header=T, stringsAsFactors=F)
 NUT <- join(NUT,ID[ID$DAT=="12Jul",c(3,4,6)])
 NUT <- join(avDIV, NUT)
 
+# calculate total dissolven inorganic nitrogen (DIN)
+NUT$DIN <- NUT$NO23 + NUT$NH4
+
 ### exclude undiluted treatment form data ###
 NUT <- NUT[NUT$DIL !="0",]
 
@@ -135,19 +138,18 @@ boot_Slope <- function(d,i,Y,V) {
 
 ########### parameter for bootstrapping #########
 
-
 Lakes <- c("Botan", "Delsjön","Lerum","Surtesjön")
 DIV_ind  <- c("Hill1","S","PSEs")
 DAT  <- c( "14Jun", "28Jun", "12Jul")
 
 # number of bootstrappes
-R <- 10000
+R <- 1000
 
 ################ maximum Biomass ###########
 Start  <- Sys.time()
 # Data frames to store Results in
 
-SlopesNH4 <- SlopesN23 <- SlopesEPmr <- SlopesEPNC <- 
+SlopesDIN <- SlopesEPmr <- SlopesEPNC <- 
   SlopesCV  <- Slopes_maxBM <- data.frame(Lake = rep(Lakes, each=3), DIV = rep(DIV_ind,4),
                                           medSlope = NA, meanSlope = NA, minSl = NA, maxSl = NA)
 # Slopes_maxBM
@@ -261,35 +263,20 @@ for (L in Lakes) {
 ################# Nutrients ################
 
 
-################# NO23###########
+################# DIN ###########
 
-#SlopesN23
+#SlopesDIN
 
 for (L in Lakes) {
   for (V in DIV_ind) {
     BOOT <- boot(data= NUT[NUT$Lake == L,] , boot_Slope , R=R, V=V, Y="NO23")
-    SlopesN23 [SlopesN23$Lake == L & SlopesN23$DIV == V ,]$medSlope <- median(BOOT$t[,1]) # median slope
-    SlopesN23 [SlopesN23$Lake == L & SlopesN23$DIV == V ,]$meanSlope <- mean(BOOT$t[,1]) # mean slope
-    SlopesN23 [SlopesN23$Lake == L & SlopesN23$DIV == V ,]$minSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
-    SlopesN23 [SlopesN23$Lake == L & SlopesN23$DIV == V ,]$maxSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # max slope
+    SlopesDIN [SlopesDIN$Lake == L & SlopesDIN$DIV == V ,]$medSlope <- median(BOOT$t[,1]) # median slope
+    SlopesDIN [SlopesDIN$Lake == L & SlopesDIN$DIV == V ,]$meanSlope <- mean(BOOT$t[,1]) # mean slope
+    SlopesDIN [SlopesDIN$Lake == L & SlopesDIN$DIV == V ,]$minSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
+    SlopesDIN [SlopesDIN$Lake == L & SlopesDIN$DIV == V ,]$maxSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # max slope
   }
 }
 
-
-################# NH4 ###########
-
-
-#SlopesNH4
-
-for (L in Lakes) {
-  for (V in DIV_ind) {
-    BOOT <- boot(data= NUT[NUT$Lake == L,] , boot_Slope , R=R, V=V, Y="NH4")
-    SlopesNH4 [SlopesNH4$Lake == L & SlopesNH4$DIV == V ,]$medSlope <- median(BOOT$t[,1]) # median slope
-    SlopesNH4 [SlopesNH4$Lake == L & SlopesNH4$DIV == V ,]$meanSlope <- mean(BOOT$t[,1]) # mean slope
-    SlopesNH4 [SlopesNH4$Lake == L & SlopesNH4$DIV == V ,]$minSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
-    SlopesNH4 [SlopesNH4$Lake == L & SlopesNH4$DIV == V ,]$maxSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # max slope
-  }
-}
 
 
 End  <- Sys.time()
@@ -376,7 +363,7 @@ G4 <- ggplot(SlopesCV, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxS
   labs(title="Stability",x="Slope")
 
 
-G5 <- ggplot(SlopesNH4, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
+G5 <- ggplot(SlopesDIN, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
   geom_point(size=3)+
   facet_wrap(~Lake,nrow=1)+
   geom_vline(xintercept=0, linetype="dashed")+
@@ -385,20 +372,9 @@ G5 <- ggplot(SlopesNH4, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=max
   theme(legend.position="none")+
   scale_x_continuous(limits = c(-1, 1), breaks=c(-1,0,1))+
   scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
-  labs(title="nutrient depletion (NH4)", x="Slope")
+  labs(title="nutrient depletion (DIN)", x="Slope")
 
-G6 <- ggplot(SlopesN23, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
-  geom_point(size=3)+
-  facet_wrap(~Lake,nrow=1)+
-  geom_vline(xintercept=0, linetype="dashed")+
-  geom_errorbarh(height=0)+
-  theme_bw(base_size=15)+
-  theme(legend.position="none")+
-  scale_x_continuous(limits = c(-1, 1), breaks=c(-1,0,1))+
-  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
-  labs(title="nutrient depletion (NO2 + NO3)", x="Slope")
-
-grid.arrange(G1,G2,G3,G4,G5,G6)
+grid.arrange(G1,G2,G3,G4,G5)
 grid.arrange(G1_2,G2_2,G3_2)
 
 #save.image("bootstrap_10000.RData")
@@ -410,7 +386,7 @@ grid.arrange(G1_2,G2_2,G3_2)
 ######################################################################################################################################
 ######## correlation of slopes ############
 RES <- c("Slopes","SlopesCV","SlopesEPmr","SlopesEPNC",
-         "SlopesN23","SlopesNH4")
+         "SlopesDIN")
 
 Slopes_combined <- Slopes[0,]
 Slopes_combined$EF <- character()
