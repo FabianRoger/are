@@ -143,7 +143,7 @@ DIV_ind  <- c("Hill1","S","PSEs")
 DAT  <- c( "14Jun", "28Jun", "12Jul")
 
 # number of bootstrappes
-R <- 1000
+R <- 10000
 
 ################ maximum Biomass ###########
 Start  <- Sys.time()
@@ -298,7 +298,7 @@ G5 <- ggplot(SlopesDIN, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=max
 grid.arrange(G1,G2,G3,G4,G5)
 
 
-#save.image("bootstrap_10000.RData")
+save.image("bootstrap_10000_new.RData")
 
 
 #################### with alternative EF and by DATE where possible ##############
@@ -398,6 +398,92 @@ G3_2 <- ggplot(Slopes_avEPmr , aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, x
 
 
 grid.arrange(G1_2,G2_2,G3_2)
+
+
+################################################################################
+#                             scatterplots                                     #
+################################################################################
+
+###### maxBM ########
+
+#reshape to long format
+
+maxBM_l <- melt( maxBM, id.vars = c("Lake","DIL","Cells"))
+maxBM_l$variable <- factor( maxBM_l$variable, levels = c( "S", "PSEs", "Hill1"))
+
+G1_s <- ggplot( maxBM_l, aes( x = value, y = Cells, colour= Lake))+
+  geom_point( ) +
+  facet_wrap( ~ variable * Lake, scales = "free_x") +
+  stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
+  theme_bw( base_size = 15)+
+  theme(legend.position = "none")+
+  labs( title = "maximum Biomass", y = "Cells", x = "Diversity") +
+  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))
+
+
+###### Stability ########
+
+#reshape to long format
+CV_l <- melt( CV, id.vars = c("Lake","DIL","Stability"))
+
+G2_s <- ggplot( CV_l, aes( x = value, y = Stability, colour= Lake))+
+  geom_point( ) +
+  facet_wrap( ~ variable * Lake, scales = "free_x") +
+  stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
+  theme_bw( base_size = 15)+
+  theme(legend.position = "none")+
+  labs( title = "Stability", y = "Stability", x = "Diversity") +
+  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))
+
+
+###### Ecolog #########
+
+#reshape to long format
+EP_l <- melt( EP[, c("Lake", "Hill1", "S", "PSEs", "NC", "mean.r")],
+              id.vars = c("Lake","NC", "mean.r"))
+
+G3_s <- ggplot( EP_l, aes( x = value, y = NC, colour= Lake))+
+  geom_point( ) +
+  facet_wrap( ~ variable * Lake, scales = "free_x") +
+  stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
+  theme_bw( base_size = 15)+
+  theme(legend.position = "none")+
+  labs( title = "Number of C sources", y = "NC", x = "Diversity") +
+  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))
+
+
+G4_s <- ggplot( EP_l, aes( x = value, y = mean.r, colour= Lake))+
+  geom_point( ) +
+  facet_wrap( ~ variable * Lake, scales = "free_x") +
+  stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
+  theme_bw( base_size = 15)+
+  theme(legend.position = "none")+
+  labs( title = "mean carbon uptake rate", y = "average r", x = "Diversity") +
+  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))
+
+
+###### Nutrients #########
+
+#reshape to long format
+NUT_l <- melt( NUT[, c("Lake", "Hill1", "S", "PSEs", "DIN")],
+              id.vars = c("Lake", "DIN"))
+
+G5_s <- ggplot( NUT_l, aes( x = value, y = DIN, colour= Lake))+
+  geom_point( ) +
+  facet_wrap( ~ variable * Lake, scales = "free_x") +
+  stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
+  theme_bw( base_size = 15)+
+  theme(legend.position = "none")+
+  labs( title = "Nutrient depletion", y = "dissolved inorganic Nitrogen",
+        x = "Diversity") +
+  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))
+
+
+
+grid.arrange(G1_s,G3_s,G4_s,G2_s,G5_s)
+
+
+
 
 
 
