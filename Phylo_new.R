@@ -66,6 +66,52 @@ prunedTree<-prune.sample(OTUmr, Tree)
 
 
 
+########### calculate unifrac ##############
+
+Phylo_obj <- phyloseq(otu_table(OTUmr, taxa_are_rows = F), phy_tree(prunedTree))
+unifrac_dist <- UniFrac(Phylo_obj, weighted = F)
+
+########## plot metanmds #########
+
+unifrac_nmds <- metaMDS(unifrac_dist)
+
+# extract points for plotting
+fitp <- data.frame( unifrac_nmds$points)
+
+#join metadata
+fitp$gbgID<-rownames(fitp)
+
+fitp<-join(fitp,ID)
+fitp$age <- as.factor(fitp$age)
+
+find_hull <- function(df) df[chull(df$MDS1, df$MDS2), ]
+hulls <- ddply(fitp[,c(1,2,6,9)], .(Lake, age), find_hull)
+hulls$age <- as.factor(hulls$age)
+
+ggplot(fitp,aes(x=MDS1,y=MDS2))+
+  geom_point(data=fitp,aes(colour=Lake,shape=Lake,size=4))+
+  geom_text(data=fitp,aes(colour=Lake,label=DIL,hjust=-0.7,size=4))+
+  geom_polygon(data=hulls,aes(alpha=0.2,fill=Lake))+
+  facet_wrap(~age)+
+  theme_bw(base_size=15)+
+  scale_colour_manual(values=c("orange","darkred","darkgreen","darkblue"))+
+  scale_fill_manual(values=c("orange","darkred","darkgreen","darkblue"))+
+  theme(legend.position="bottom")+
+  guides(size=F,alpha=F)
+
+ggplot(fitp,aes(x=MDS1,y=MDS2))+
+  geom_point(data=fitp,aes(colour=age,shape=age,size=4))+
+  geom_text(data=fitp,aes(colour=age,label=DIL,hjust=-0.7,size=4))+
+  geom_polygon(data=hulls,aes(alpha=0.2,fill=age))+
+  facet_wrap(~Lake)+
+  theme_bw(base_size=15)+
+  theme(legend.position="bottom")+
+  guides(size=F,alpha=F)
+
+############################################
+
+
+
 #calculate psv, psr, pse
 
 #### psv: phylogenetic species variability ####
