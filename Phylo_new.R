@@ -70,6 +70,7 @@ prunedTree<-prune.sample(OTUmr, Tree)
 
 Phylo_obj <- phyloseq(otu_table(OTUmr, taxa_are_rows = F), phy_tree(prunedTree))
 unifrac_dist <- UniFrac(Phylo_obj, weighted = F)
+save(unifrac_dist, file = "unifrac_dist.RData")
 
 ########## plot metanmds #########
 
