@@ -413,7 +413,7 @@ maxBM_l$variable <- factor( maxBM_l$variable, levels = c( "S", "PSEs", "Hill1"))
 
 G1_s <- ggplot( maxBM_l, aes( x = value, y = Cells, colour= Lake))+
   geom_point( ) +
-  facet_wrap( ~ variable * Lake, scales = "free_x") +
+  facet_wrap( ~ variable * Lake, scales = "free") +
   stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
   theme_bw( base_size = 15)+
   theme(legend.position = "none")+
@@ -421,30 +421,33 @@ G1_s <- ggplot( maxBM_l, aes( x = value, y = Cells, colour= Lake))+
   scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))
 
 
+
+
 ###### Stability ########
 
 #reshape to long format
 CV_l <- melt( CV, id.vars = c("Lake","DIL","Stability"))
+CV_l$variable <- factor( CV_l$variable, levels = c( "S", "PSEs", "Hill1"))
 
 G2_s <- ggplot( CV_l, aes( x = value, y = Stability, colour= Lake))+
   geom_point( ) +
-  facet_wrap( ~ variable * Lake, scales = "free_x") +
+  facet_wrap( ~ variable * Lake, scales = "free") +
   stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
   theme_bw( base_size = 15)+
   theme(legend.position = "none")+
   labs( title = "Stability", y = "Stability", x = "Diversity") +
   scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))
 
-
 ###### Ecolog #########
 
 #reshape to long format
 EP_l <- melt( EP[, c("Lake", "Hill1", "S", "PSEs", "NC", "mean.r")],
               id.vars = c("Lake","NC", "mean.r"))
+EP_l$variable <- factor( EP_l$variable, levels = c( "S", "PSEs", "Hill1"))
 
 G3_s <- ggplot( EP_l, aes( x = value, y = NC, colour= Lake))+
   geom_point( ) +
-  facet_wrap( ~ variable * Lake, scales = "free_x") +
+  facet_wrap( ~ variable * Lake, scales = "free") +
   stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
   theme_bw( base_size = 15)+
   theme(legend.position = "none")+
@@ -454,7 +457,7 @@ G3_s <- ggplot( EP_l, aes( x = value, y = NC, colour= Lake))+
 
 G4_s <- ggplot( EP_l, aes( x = value, y = mean.r, colour= Lake))+
   geom_point( ) +
-  facet_wrap( ~ variable * Lake, scales = "free_x") +
+  facet_wrap( ~ variable * Lake, scales = "free") +
   stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
   theme_bw( base_size = 15)+
   theme(legend.position = "none")+
@@ -467,10 +470,11 @@ G4_s <- ggplot( EP_l, aes( x = value, y = mean.r, colour= Lake))+
 #reshape to long format
 NUT_l <- melt( NUT[, c("Lake", "Hill1", "S", "PSEs", "DIN")],
               id.vars = c("Lake", "DIN"))
+NUT_l$variable <- factor( NUT_l$variable, levels = c( "S", "PSEs", "Hill1"))
 
 G5_s <- ggplot( NUT_l, aes( x = value, y = DIN, colour= Lake))+
   geom_point( ) +
-  facet_wrap( ~ variable * Lake, scales = "free_x") +
+  facet_wrap( ~ variable * Lake, scales = "free") +
   stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
   theme_bw( base_size = 15)+
   theme(legend.position = "none")+
@@ -487,12 +491,15 @@ grid.arrange(G1_s,G3_s,G4_s,G2_s,G5_s)
 
 
 
-######################################################################################################################################
-######## correlation of slopes ############
-RES <- c("Slopes","SlopesCV","SlopesEPmr","SlopesEPNC",
+####################### correlation of slopes ##################################
+
+# vector with DFs with Slopes
+
+RES <- c("Slopes_maxBM","SlopesCV","SlopesEPmr","SlopesEPNC",
          "SlopesDIN")
 
-Slopes_combined <- Slopes[0,]
+#join into common DF
+Slopes_combined <- Slopes_maxBM[0,]
 Slopes_combined$EF <- character()
 
 for (i in 1:length(RES)) {
@@ -502,8 +509,28 @@ for (i in 1:length(RES)) {
   
 }
 
-ggplot(Slopes_combined, aes(x=DIV,y=meanSlope,colour=DIV))+
-  geom_boxplot()
+# change factor level of diversity
+Slopes_combined$DIV <- factor(Slopes_combined$DIV, levels = c("S", "PSEs", "Hill1"))
+
+# invert sign for NUT
+Slopes_combined[ Slopes_combined$EF == "SlopesDIN",][,3:6]  <- apply( 
+  Slopes_combined[ Slopes_combined$EF == "SlopesDIN",][,3:6], 2, function(x) -1*x)
+
+ggplot(Slopes_combined, aes(x=DIV,y=medSlope,shape = EF, fill = Lake))+
+  geom_point( size = 4, position = position_jitter(w = 0.1, h = 0), alpha=0.8 )+
+  facet_wrap(~ Lake)+
+  scale_fill_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
+  geom_hline(yintersect = 0, linetype = "dashed")+
+  labs( x = "diversity metric", y = "median slopes", 
+        title = "median slope of the diversity ~ EF relationship") +
+  theme_bw(base_size = 15) + 
+  guides(colour ="none", fill = "none")+
+  theme(legend.position="bottom")+
+  scale_shape_manual( values = c(21:25),
+    name="Ecosystem Function",
+                    breaks=c(levels(as.factor(Slopes_combined$EF))),
+                    labels=c("maximum Biomass", "Stability", "Nutrient deplition",
+                             "number of C sources", "C source uptake rate"))
 
 L_EF <- by(Slopes_combined,Slopes_combined$EF,list)
 
