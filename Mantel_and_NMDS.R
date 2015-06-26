@@ -21,6 +21,7 @@
 library(ggplot2)
 library(reshape2)
 library(gridExtra)
+library(vegan)
 ###############
 
 # import files
@@ -39,6 +40,10 @@ load("EcoLYNdist.RData")
 
 # Importing metadata
 ID<-read.table("gbgID",header=TRUE, stringsAsFactors=F)
+
+# chaneg factor level for Dates
+ID$DAT <- factor( ID$DAT, levels = c( "14Jun", "28Jun", "12Jul"))
+
 ###############
 
 # find common samples in all matrices
@@ -193,8 +198,130 @@ grid.arrange( G1, G2, G3, G4, main=textGrob(
 
 
 
+############## plot NMDS plots #################################################
 
 
+########## unifrac ##########
+
+fit <- metaMDS(unifrac_dist, k=2) # k is the number of dim
+
+# extract points for plotting
+fitp<-data.frame(fit$points)
+
+#join metadata
+fitp$gbgID<-rownames(fitp)
+
+fitp<-join(fitp,ID)
+
+# for 2d plot ()
+
+find_hull <- function(df) df[chull(df$MDS1, df$MDS2), ]
+hulls <- ddply(fitp[,c("MDS1","MDS2","Lake","DAT")], .(Lake,DAT), find_hull)
+
+G_nmds_1 <- ggplot(fitp,aes(x=MDS1,y=MDS2))+
+  geom_point(data=fitp,aes(colour=Lake,shape=Lake,size=4))+
+  geom_text(data=fitp,aes(colour=Lake,label=DIL,hjust=-0.7,size=4))+
+  geom_polygon(data=hulls,aes(alpha=0.8,fill=Lake))+
+  facet_wrap(~DAT)+
+  theme_bw(base_size=15)+
+  scale_colour_manual(values=c("orange","darkred","darkgreen","darkblue"))+
+  scale_fill_manual(values=c("orange","darkred","darkgreen","darkblue"))+
+  theme(legend.position="none")+
+  guides(size=F,alpha=F)+
+  labs(title=paste("nmds of OTU data \n weighted unifrac; stress = ",signif(fit$stress,2)))
 
 
+######### OTUdist  #########
 
+fit <- metaMDS(OTUdist, k=2) # k is the number of dim
+
+# extract points for plotting
+fitp<-data.frame(fit$points)
+
+# flipping y axis
+fitp$MDS2 <- -1 * fitp$MDS2
+
+#join metadata
+fitp$gbgID<-rownames(fitp)
+
+fitp<-join(fitp,ID)
+
+# for 2d plot ()
+
+find_hull <- function(df) df[chull(df$MDS1, df$MDS2), ]
+hulls <- ddply(fitp[,c("MDS1","MDS2","Lake","DAT")], .(Lake,DAT), find_hull)
+
+G_nmds_2 <- ggplot(fitp,aes(x=MDS1,y=MDS2))+
+  geom_point(data=fitp,aes(colour=Lake,shape=Lake,size=4))+
+  geom_text(data=fitp,aes(colour=Lake,label=DIL,hjust=-0.7,size=4))+
+  geom_polygon(data=hulls,aes(alpha=0.8,fill=Lake))+
+  facet_wrap(~DAT)+
+  theme_bw(base_size=15)+
+  scale_colour_manual(values=c("orange","darkred","darkgreen","darkblue"))+
+  scale_fill_manual(values=c("orange","darkred","darkgreen","darkblue"))+
+  theme(legend.position="none")+
+  guides(size=F,alpha=F)+
+  labs(title=paste("nmds of OTU data \n bray-curtis presence/absence; stress = ",signif(fit$stress,2)))
+
+
+######### EcoLYNdist  #########
+
+fit <- metaMDS(EcoLYNdist, k=2) # k is the number of dim
+
+# extract points for plotting
+fitp<-data.frame(fit$points)
+
+#join metadata
+fitp$gbgID<-rownames(fitp)
+
+fitp<-join(fitp,ID)
+
+# for 2d plot ()
+
+find_hull <- function(df) df[chull(df$MDS1, df$MDS2), ]
+hulls <- ddply(fitp[,c("MDS1","MDS2","Lake","DAT")], .(Lake,DAT), find_hull)
+
+G_nmds_3 <- ggplot(fitp,aes(x=MDS1,y=MDS2))+
+  geom_point(data=fitp,aes(colour=Lake,shape=Lake,size=4))+
+  geom_text(data=fitp,aes(colour=Lake,label=DIL,hjust=-0.7,size=4))+
+  geom_polygon(data=hulls,aes(alpha=0.8,fill=Lake))+
+  facet_wrap(~DAT)+
+  theme_bw(base_size=15)+
+  scale_colour_manual(values=c("orange","darkred","darkgreen","darkblue"))+
+  scale_fill_manual(values=c("orange","darkred","darkgreen","darkblue"))+
+  theme(legend.position="none")+
+  guides(size=F,alpha=F)+
+  labs(title=paste("nmds of carbon source utilization pattern \n euclidian; stress = ",signif(fit$stress,2)))
+
+
+######### NLSdist  #########
+
+fit <- metaMDS(NLSdist, k=2) # k is the number of dim
+
+# extract points for plotting
+fitp<-data.frame(fit$points)
+
+#join metadata
+fitp$gbgID<-rownames(fitp)
+
+fitp<-join(fitp,ID)
+
+# for 2d plot ()
+
+find_hull <- function(df) df[chull(df$MDS1, df$MDS2), ]
+hulls <- ddply(fitp[,c("MDS1","MDS2","Lake","DAT")], .(Lake,DAT), find_hull)
+
+G_nmds_4 <- ggplot(fitp,aes(x=MDS1,y=MDS2))+
+  geom_point(data=fitp,aes(colour=Lake,shape=Lake,size=4))+
+  geom_text(data=fitp,aes(colour=Lake,label=DIL,hjust=-0.7,size=4))+
+  geom_polygon(data=hulls,aes(alpha=0.8,fill=Lake))+
+  facet_wrap(~DAT)+
+  theme_bw(base_size=15)+
+  scale_colour_manual(values=c("orange","darkred","darkgreen","darkblue"))+
+  scale_fill_manual(values=c("orange","darkred","darkgreen","darkblue"))+
+  theme(legend.position="none")+
+  guides(size=F,alpha=F)+
+  labs(title=paste("nmds of carbon source uptake rates \n euclidian, stress = ",signif(fit$stress,2)))
+
+
+grid.arrange(G_nmds_1,G_nmds_2,G_nmds_3,G_nmds_4)
