@@ -5,6 +5,7 @@ library(plyr)
 library(GGally)
 library(gridExtra)
 library(boot)
+library(reshape2)
 
 ID<-read.table("gbgID",header=TRUE, stringsAsFactors=F)
 DIV<-read.table("Diversity_5000_100p.txt",stringsAsFactors=F)
@@ -150,8 +151,11 @@ Start  <- Sys.time()
 # Data frames to store Results in
 
 SlopesDIN <- SlopesEPmr <- SlopesEPNC <- 
-  SlopesCV  <- Slopes_maxBM <- data.frame(Lake = rep(Lakes, each=3), DIV = rep(DIV_ind,4),
-                                          medSlope = NA, meanSlope = NA, minSl = NA, maxSl = NA)
+  SlopesCV  <- Slopes_maxBM <- data.frame(
+    Lake = rep(Lakes, each=3), DIV = rep(DIV_ind,4),medSlope = NA,
+    meanSlope = NA, minSl99 = NA, maxSl99 = NA, minSl95 = NA, maxSl95 = NA,
+    minSl90 = NA, maxSl90 = NA)
+
 # Slopes_maxBM
 
 for (L in Lakes) {
@@ -159,8 +163,12 @@ for (L in Lakes) {
     BOOT <- boot(data= maxBM[maxBM$Lake == L,] , boot_Slope , R=R, V=V, Y="Cells")
     Slopes_maxBM [Slopes_maxBM$Lake == L & Slopes_maxBM$DIV == V ,]$medSlope <- median(BOOT$t[,1]) # median slope
     Slopes_maxBM [Slopes_maxBM$Lake == L & Slopes_maxBM$DIV == V ,]$meanSlope <- mean(BOOT$t[,1]) # mean slope
-    Slopes_maxBM [Slopes_maxBM$Lake == L & Slopes_maxBM$DIV == V ,]$minSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
-    Slopes_maxBM [Slopes_maxBM$Lake == L & Slopes_maxBM$DIV == V ,]$maxSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # max slope
+    Slopes_maxBM [Slopes_maxBM$Lake == L & Slopes_maxBM$DIV == V ,]$minSl99 <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
+    Slopes_maxBM [Slopes_maxBM$Lake == L & Slopes_maxBM$DIV == V ,]$maxSl99 <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # max slope
+    Slopes_maxBM [Slopes_maxBM$Lake == L & Slopes_maxBM$DIV == V ,]$minSl95 <- boot.ci(BOOT, conf=0.95, type="bca", index=1)$bca[[4]] # min slope
+    Slopes_maxBM [Slopes_maxBM$Lake == L & Slopes_maxBM$DIV == V ,]$maxSl95 <- boot.ci(BOOT, conf=0.95, type="bca", index=1)$bca[[5]] # max slope
+    Slopes_maxBM [Slopes_maxBM$Lake == L & Slopes_maxBM$DIV == V ,]$minSl90 <- boot.ci(BOOT, conf=0.90, type="bca", index=1)$bca[[4]] # min slope
+    Slopes_maxBM [Slopes_maxBM$Lake == L & Slopes_maxBM$DIV == V ,]$maxSl90 <- boot.ci(BOOT, conf=0.90, type="bca", index=1)$bca[[5]] # max slope
   }
 }
 
@@ -174,8 +182,12 @@ for (L in Lakes) {
     BOOT <- boot(data= CV[CV$Lake == L,] , boot_Slope , R=R, V=V, Y="Stability")
     SlopesCV [SlopesCV$Lake == L & SlopesCV$DIV == V ,]$medSlope <- median(BOOT$t[,1]) # median slope
     SlopesCV [SlopesCV$Lake == L & SlopesCV$DIV == V ,]$meanSlope <- mean(BOOT$t[,1]) # mean slope
-    SlopesCV [SlopesCV$Lake == L & SlopesCV$DIV == V ,]$minSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
-    SlopesCV [SlopesCV$Lake == L & SlopesCV$DIV == V ,]$maxSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # max slope
+    SlopesCV [SlopesCV$Lake == L & SlopesCV$DIV == V ,]$minSl99 <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
+    SlopesCV [SlopesCV$Lake == L & SlopesCV$DIV == V ,]$maxSl99 <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # max slope
+    SlopesCV [SlopesCV$Lake == L & SlopesCV$DIV == V ,]$minSl95 <- boot.ci(BOOT, conf=0.95, type="bca", index=1)$bca[[4]] # min slope
+    SlopesCV [SlopesCV$Lake == L & SlopesCV$DIV == V ,]$maxSl95 <- boot.ci(BOOT, conf=0.95, type="bca", index=1)$bca[[5]] # max slope
+    SlopesCV [SlopesCV$Lake == L & SlopesCV$DIV == V ,]$minSl90 <- boot.ci(BOOT, conf=0.90, type="bca", index=1)$bca[[4]] # min slope
+    SlopesCV [SlopesCV$Lake == L & SlopesCV$DIV == V ,]$maxSl90 <- boot.ci(BOOT, conf=0.90, type="bca", index=1)$bca[[5]] # max slope
   }
 }
 
@@ -190,8 +202,12 @@ for (L in Lakes) {
     BOOT <- boot(data= avEP[avEP$Lake == L,] , boot_Slope , R=R, V=V, Y="NC")
     SlopesEPNC [SlopesEPNC$Lake == L & SlopesEPNC$DIV == V ,]$medSlope <- median(BOOT$t[,1]) # median slope
     SlopesEPNC [SlopesEPNC$Lake == L & SlopesEPNC$DIV == V ,]$meanSlope <- mean(BOOT$t[,1]) # mean slope
-    SlopesEPNC [SlopesEPNC$Lake == L & SlopesEPNC$DIV == V ,]$minSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
-    SlopesEPNC [SlopesEPNC$Lake == L & SlopesEPNC$DIV == V ,]$maxSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # max slope
+    SlopesEPNC [SlopesEPNC$Lake == L & SlopesEPNC$DIV == V ,]$minSl99 <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
+    SlopesEPNC [SlopesEPNC$Lake == L & SlopesEPNC$DIV == V ,]$maxSl99 <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # max slope
+    SlopesEPNC [SlopesEPNC$Lake == L & SlopesEPNC$DIV == V ,]$minSl95 <- boot.ci(BOOT, conf=0.95, type="bca", index=1)$bca[[4]] # min slope
+    SlopesEPNC [SlopesEPNC$Lake == L & SlopesEPNC$DIV == V ,]$maxSl95 <- boot.ci(BOOT, conf=0.95, type="bca", index=1)$bca[[5]] # max slope
+    SlopesEPNC [SlopesEPNC$Lake == L & SlopesEPNC$DIV == V ,]$minSl90 <- boot.ci(BOOT, conf=0.90, type="bca", index=1)$bca[[4]] # min slope
+    SlopesEPNC [SlopesEPNC$Lake == L & SlopesEPNC$DIV == V ,]$maxSl90 <- boot.ci(BOOT, conf=0.90, type="bca", index=1)$bca[[5]] # max slope
   }
 }
 
@@ -205,8 +221,12 @@ for (L in Lakes) {
     BOOT <- boot(data= avEP[avEP$Lake == L,] , boot_Slope , R=R, V=V, Y="mean.r")
     SlopesEPmr [SlopesEPmr$Lake == L & SlopesEPmr$DIV == V ,]$medSlope <- median(BOOT$t[,1]) # median slope
     SlopesEPmr [SlopesEPmr$Lake == L & SlopesEPmr$DIV == V ,]$meanSlope <- mean(BOOT$t[,1]) # mean slope
-    SlopesEPmr [SlopesEPmr$Lake == L & SlopesEPmr$DIV == V ,]$minSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
-    SlopesEPmr [SlopesEPmr$Lake == L & SlopesEPmr$DIV == V ,]$maxSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # max slope
+    SlopesEPmr [SlopesEPmr$Lake == L & SlopesEPmr$DIV == V ,]$minSl99 <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
+    SlopesEPmr [SlopesEPmr$Lake == L & SlopesEPmr$DIV == V ,]$maxSl99 <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # max slope
+    SlopesEPmr [SlopesEPmr$Lake == L & SlopesEPmr$DIV == V ,]$minSl95 <- boot.ci(BOOT, conf=0.95, type="bca", index=1)$bca[[4]] # min slope
+    SlopesEPmr [SlopesEPmr$Lake == L & SlopesEPmr$DIV == V ,]$maxSl95 <- boot.ci(BOOT, conf=0.95, type="bca", index=1)$bca[[5]] # max slope
+    SlopesEPmr [SlopesEPmr$Lake == L & SlopesEPmr$DIV == V ,]$minSl90 <- boot.ci(BOOT, conf=0.90, type="bca", index=1)$bca[[4]] # min slope
+    SlopesEPmr [SlopesEPmr$Lake == L & SlopesEPmr$DIV == V ,]$maxSl90 <- boot.ci(BOOT, conf=0.90, type="bca", index=1)$bca[[5]] # max slope
   }
 }
 
@@ -224,8 +244,12 @@ for (L in Lakes) {
     BOOT <- boot(data= NUT[NUT$Lake == L,] , boot_Slope , R=R, V=V, Y="NO23")
     SlopesDIN [SlopesDIN$Lake == L & SlopesDIN$DIV == V ,]$medSlope <- median(BOOT$t[,1]) # median slope
     SlopesDIN [SlopesDIN$Lake == L & SlopesDIN$DIV == V ,]$meanSlope <- mean(BOOT$t[,1]) # mean slope
-    SlopesDIN [SlopesDIN$Lake == L & SlopesDIN$DIV == V ,]$minSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
-    SlopesDIN [SlopesDIN$Lake == L & SlopesDIN$DIV == V ,]$maxSl <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # max slope
+    SlopesDIN [SlopesDIN$Lake == L & SlopesDIN$DIV == V ,]$minSl99 <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[4]] # min slope
+    SlopesDIN [SlopesDIN$Lake == L & SlopesDIN$DIV == V ,]$maxSl99 <- boot.ci(BOOT, conf=0.99, type="bca", index=1)$bca[[5]] # max slope
+    SlopesDIN [SlopesDIN$Lake == L & SlopesDIN$DIV == V ,]$minSl95 <- boot.ci(BOOT, conf=0.95, type="bca", index=1)$bca[[4]] # min slope
+    SlopesDIN [SlopesDIN$Lake == L & SlopesDIN$DIV == V ,]$maxSl95 <- boot.ci(BOOT, conf=0.95, type="bca", index=1)$bca[[5]] # max slope
+    SlopesDIN [SlopesDIN$Lake == L & SlopesDIN$DIV == V ,]$minSl90 <- boot.ci(BOOT, conf=0.90, type="bca", index=1)$bca[[4]] # min slope
+    SlopesDIN [SlopesDIN$Lake == L & SlopesDIN$DIV == V ,]$maxSl90 <- boot.ci(BOOT, conf=0.90, type="bca", index=1)$bca[[5]] # max slope
   }
 }
 
@@ -236,11 +260,13 @@ End-Start
 
 ##############################################################################################################################
 
-G1 <- ggplot(Slopes_maxBM , aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
+G1 <- ggplot(Slopes_maxBM , aes(x=medSlope, y=DIV, colour=Lake))+
   geom_point(size=3)+
   facet_wrap(~Lake,nrow=1)+
   geom_vline(xintercept=0, linetype="dashed")+
-  geom_errorbarh(height=0)+
+  geom_errorbarh(height=0.3, size = 1, aes(xmin=minSl99, xmax=maxSl99))+
+  geom_errorbarh(height=0.25, aes(xmin=minSl95, xmax=maxSl95))+
+  geom_errorbarh(height=0.2, aes(xmin=minSl90, xmax=maxSl90))+
   theme_bw(base_size=15)+
   theme(legend.position="none")+
   scale_x_continuous(limits = c(-1, 1),breaks=c(-1,0,1))+
@@ -248,11 +274,13 @@ G1 <- ggplot(Slopes_maxBM , aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax
   labs(title="maximum Biomass",x="Slope")
 
 
-G2 <- ggplot(SlopesEPNC, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
+G2 <- ggplot(SlopesEPNC, aes(x=medSlope, y=DIV, colour=Lake))+
   geom_point(size=3)+
   facet_wrap(~Lake,nrow=1)+
   geom_vline(xintercept=0, linetype="dashed")+
-  geom_errorbarh(height=0)+
+  geom_errorbarh(height=0.3, size = 1, aes(xmin=minSl99, xmax=maxSl99))+
+  geom_errorbarh(height=0.25, aes(xmin=minSl95, xmax=maxSl95))+
+  geom_errorbarh(height=0.2, aes(xmin=minSl90, xmax=maxSl90))+
   theme_bw(base_size=15)+
   theme(legend.position="none")+
   scale_x_continuous(limits = c(-1, 1), breaks=c(-1,0,1))+
@@ -260,11 +288,13 @@ G2 <- ggplot(SlopesEPNC, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=ma
   labs(title="Number of C sources", x="Slope")
 
 
-G3 <- ggplot(SlopesEPmr, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
+G3 <- ggplot(SlopesEPmr, aes(x=medSlope, y=DIV, colour=Lake))+
   geom_point(size=3)+
   facet_wrap(~Lake,nrow=1)+
   geom_vline(xintercept=0, linetype="dashed")+
-  geom_errorbarh(height=0)+
+  geom_errorbarh(height=0.3, size = 1, aes(xmin=minSl99, xmax=maxSl99))+
+  geom_errorbarh(height=0.25, aes(xmin=minSl95, xmax=maxSl95))+
+  geom_errorbarh(height=0.2, aes(xmin=minSl90, xmax=maxSl90))+
   theme_bw(base_size=15)+
   theme(legend.position="none")+
   scale_x_continuous(limits = c(-1, 1), breaks=c(-1,0,1))+
@@ -272,11 +302,13 @@ G3 <- ggplot(SlopesEPmr, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=ma
   labs(title="mean carbon uptake rate", x="Slope")
 
 
-G4 <- ggplot(SlopesCV, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
+G4 <- ggplot(SlopesCV, aes(x=medSlope, y=DIV, colour=Lake))+
   geom_point(size=3)+
   facet_wrap(~Lake,nrow=1)+
   geom_vline(xintercept=0, linetype="dashed")+
-  geom_errorbarh(height=0)+
+  geom_errorbarh(height=0.3, size = 1, aes(xmin=minSl99, xmax=maxSl99))+
+  geom_errorbarh(height=0.25, aes(xmin=minSl95, xmax=maxSl95))+
+  geom_errorbarh(height=0.2, aes(xmin=minSl90, xmax=maxSl90))+
   theme_bw(base_size=15)+
   theme(legend.position="none")+
   scale_x_continuous(limits = c(-1, 1),breaks=c(-1,0,1))+
@@ -284,11 +316,13 @@ G4 <- ggplot(SlopesCV, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxS
   labs(title="Stability",x="Slope")
 
 
-G5 <- ggplot(SlopesDIN, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=maxSl))+
+G5 <- ggplot(SlopesDIN, aes(x=medSlope, y=DIV, colour=Lake))+
   geom_point(size=3)+
   facet_wrap(~Lake,nrow=1)+
   geom_vline(xintercept=0, linetype="dashed")+
-  geom_errorbarh(height=0)+
+  geom_errorbarh(height=0.3, size = 1, aes(xmin=minSl99, xmax=maxSl99))+
+  geom_errorbarh(height=0.25, aes(xmin=minSl95, xmax=maxSl95))+
+  geom_errorbarh(height=0.2, aes(xmin=minSl90, xmax=maxSl90))+
   theme_bw(base_size=15)+
   theme(legend.position="none")+
   scale_x_continuous(limits = c(-1, 1), breaks=c(-1,0,1))+
@@ -298,7 +332,7 @@ G5 <- ggplot(SlopesDIN, aes(x=medSlope, y=DIV, colour=Lake, xmin=minSl, xmax=max
 grid.arrange(G1,G2,G3,G4,G5)
 
 
-save.image("bootstrap_10000_new.RData")
+save.image("bootstrap_10000_3CI.RData")
 
 
 #################### with alternative EF and by DATE where possible ##############
@@ -411,7 +445,7 @@ grid.arrange(G1_2,G2_2,G3_2)
 maxBM_l <- melt( maxBM, id.vars = c("Lake","DIL","Cells"))
 maxBM_l$variable <- factor( maxBM_l$variable, levels = c( "S", "PSEs", "Hill1"))
 
-G1_s <- ggplot( maxBM_l, aes( x = value, y = Cells, colour= Lake))+
+G1_s <- ggplot( maxBM_l, aes( x = scale(value), y = scale(Cells), colour= Lake))+
   geom_point( ) +
   facet_wrap( ~ variable * Lake, scales = "free") +
   stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
@@ -516,7 +550,9 @@ Slopes_combined$DIV <- factor(Slopes_combined$DIV, levels = c("S", "PSEs", "Hill
 Slopes_combined[ Slopes_combined$EF == "SlopesDIN",][,3:6]  <- apply( 
   Slopes_combined[ Slopes_combined$EF == "SlopesDIN",][,3:6], 2, function(x) -1*x)
 
-ggplot(Slopes_combined, aes(x=DIV,y=medSlope,shape = EF, fill = Lake))+
+
+ggplot(Slopes_combined, aes(x=DIV,y=medSlope,shape = EF, fill = Lake,
+                            ymin=minSl, ymax=maxSl))+
   geom_point( size = 4, position = position_jitter(w = 0.1, h = 0), alpha=0.8 )+
   facet_wrap(~ Lake)+
   scale_fill_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
@@ -529,8 +565,8 @@ ggplot(Slopes_combined, aes(x=DIV,y=medSlope,shape = EF, fill = Lake))+
   scale_shape_manual( values = c(21:25),
     name="Ecosystem Function",
                     breaks=c(levels(as.factor(Slopes_combined$EF))),
-                    labels=c("maximum Biomass", "Stability", "Nutrient deplition",
-                             "number of C sources", "C source uptake rate"))
+                    labels=c("maximum\nBiomass", "Stability", "Nutrient\ndeplition",
+                             "number of\nC sources", "C source\nuptake rate"))
 
 L_EF <- by(Slopes_combined,Slopes_combined$EF,list)
 
