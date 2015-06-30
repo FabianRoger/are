@@ -198,6 +198,61 @@ grid.arrange( G1, G2, G3, G4, main=textGrob(
 
 
 
+############## calculate Mantel test ###########################################
+
+# function to calculate mantel test etween tow matrices in a give Lake
+
+MantelLakes <- function(mat1,mat2,Lake,method,perm) {
+  LakeID <- ID[ID$Lake == Lake,]$gbgID
+  W1<- which(labels(mat1) %in% LakeID)
+  W2 <- which( labels( mat2) %in% LakeID)
+  dist1 <- as.dist( as.matrix( mat1)[ W1, W1])
+  dist2 <- as.dist( as.matrix( mat2 )[ W2, W2])
+  RES <- mantel(dist1,dist2,method=method, permutations = perm)
+  return(RES)
+}
+
+
+
+Comp <- combn(names(dist.list),2)[,2:5]
+
+RES <- data.frame(comp =  rep(paste(Comp[ 1, ], Comp[ 2, ], sep = "_" ),each = 4),
+                  Lake = rep( levels( as.factor( ID$Lake)), 4), r = NA, p = NA,
+                  r2 = NA )
+
+
+
+for ( comp in 1:4 ) {
+  for (L in levels( as.factor( ID$Lake))) {
+    Mant <-  MantelLakes(mat1 = dist.list[[which(names(dist.list) == Comp[1,comp])]],
+                         mat2 = dist.list[[which(names(dist.list) == Comp[2,comp])]],
+                         Lake = L,
+                         method = "pear",
+                         perm = 9999)
+    comP <- paste(Comp[1,comp],Comp[2,comp],sep="_") 
+    print(comP)
+    RES[RES$Lake == L & RES$comp == comP,]$r <- Mant$statistic
+    RES[RES$Lake == L & RES$comp == comP,]$r2<- Mant$statistic^2
+    RES[RES$Lake == L & RES$comp == comP,]$p <- Mant$signif
+    
+  }
+}
+
+RES[,3:5] <- apply(RES[,3:5], 2, signif, digits = 2 )
+
+RES$comp <- factor(RES$comp, labels = c(levels(as.factor(RES$comp))[c(1,3,2,4)]))
+
+ggplot(RES, aes(x=Lake, y=r2, fill=Lake, label = p))+
+  geom_bar(stat="identity")+
+  geom_text(aes(y = r2+0.01))+
+  facet_wrap(~comp)+
+  theme_bw(base_size=15)+
+  scale_fill_manual(values=c("orange","darkred","darkgreen","darkblue"))
+  
+  
+
+
+
 ############## plot NMDS plots #################################################
 
 
@@ -325,3 +380,4 @@ G_nmds_4 <- ggplot(fitp,aes(x=MDS1,y=MDS2))+
 
 
 grid.arrange(G_nmds_1,G_nmds_2,G_nmds_3,G_nmds_4)
+
