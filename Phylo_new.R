@@ -2,6 +2,9 @@ library(picante)
 library(phyloseq)
 library(ggplot2)
 library(plyr)
+library(gplots)
+library(RColorBrewer)
+
 
 # import the Phylogentic tree generates with fasttree in qiime #
 
@@ -33,8 +36,8 @@ OTUm<-as.matrix(read.table("OTUm.txt",sep="\t",header=T,stringsAsFactors=FALSE))
 # import taxonomic information
 OtuTAX<-read.table("OTU_woS_onlyBAC_wTax.txt",sep="\t",header=T,stringsAsFactors=F)
 
+setwd("~/Documents/01_PhD/01_Research/02_rare_Biosphere/R_clean")
 #import sample meta data
-setwd("~/Documents/01_PhD/01_Research/02_rare_Biosphere/R scripts")
 ID<-read.table("gbgID",header=TRUE)
 
 # add "age" coloumn to DIV
@@ -826,4 +829,111 @@ for (i in ID$gbgID){
 
 dev.off()
 
-##################################################################################
+###################################### heatmap    ##############################
+
+
+#take average abundance of three dates
+
+
+IDr <- ID[which(ID$gbgID %in% rownames(OTUmr)),]
+
+OTUav <- matrix(nrow = 0, ncol = ncol(OTUmr))
+colnames(OTUav) <- colnames(OTUmr)
+
+row.names <- c()
+
+for (L in levels( as.factor ( IDr$Lake))) {
+  for (D in levels( as.factor( IDr$DIL))) {
+    
+    x <- OTUmr[ rownames(OTUmr) %in% IDr[ IDr$Lake == L & IDr$DIL == D,]$gbgID, ] 
+    row.nam <- as.character(IDr[ IDr$Lake == L & IDr$DIL == D,]$gbgID)
+    
+    if( length( dim(x)) > 0) {
+    x <- apply(OTUmr[ rownames(OTUmr) %in% 
+                        IDr[ IDr$Lake == L & IDr$DIL == D,]$gbgID, ], 2, mean)
+    row.nam <- row.nam[1]
+  }
+  row.names <- c(row.names, row.nam)
+  
+ OTUav <-  rbind(OTUav,x)
+}}
+
+
+row.names(OTUav) <- row.names
+
+#split OTU table by ralative abundance in each sample
+# abundant : > 1% relative abundance in at least 1 sample
+# rare : all that are not abundant
+
+abundantOTU_list <- apply(OTUav,1,function(x) names(which(x > 0.01*sum(x))))
+abundantOTU <- unique(unlist(abundantOTU_list))
+OTU_ab  <- OTUav[,abundantOTU]
+
+rareOTU_list <- apply(OTUav,1,function(x) names(which(x <= 0.01*sum(x) & x > 0.001*sum(x))))
+rareOTU <- unique(unlist(rareOTU_list))
+rareOTU <- rareOTU[which(! rareOTU %in% abundantOTU)]
+OTU_rar  <- OTUav[,rareOTU]
+
+spouriousOTU_list <- apply(OTUav,1,function(x) names(which(x <= 0.001*sum(x))))
+spouriousOTU <- unique(unlist(spouriousOTU_list))
+spouriousOTU <- spouriousOTU[which(! spouriousOTU %in% rareOTU)]
+OTU_spou <- OTUav[,spouriousOTU]
+
+#taxa table
+phy_tax <- as.matrix(OtuTAX[2:8], dimnames = list(OtuTAX$OTUID, colnames(OtuTAX[2:8])))
+rownames(phy_tax) <- as.character(OtuTAX$OTUId)
+
+# ID
+rownames(ID) <- ID$gbgID
+
+###########  for abundant Taxa ###########
+
+heat_phy_ab <- phyloseq( otu_table( OTU_ab, taxa_are_rows = F), 
+                      phy_tree( Tree),
+                      sample_data(ID),
+                      tax_table(phy_tax))
+
+# sample order
+IDphy <- ID[ID$gbgID %in% sample_names(heat_phy_ab),]
+sample.order <- as.character(IDphy[with(IDphy, order(Lake,DIL)),]$gbgID)
+
+heat_plot <- plot_heatmap(heat_phy_ab, sample.order = sample.order, sample.label="DIL",
+             taxa.label = "Family", first.taxa = "OTU_19",
+             title="abundant OTUs (> 0.1 % of abundance in min 1 sample)")
+
+heat_plot + 
+  facet_grid(~Lake, scales = "free") + 
+  theme_bw(base_size = 15)+
+  theme(axis.text.y = element_text(hjust = 1, size=8))
+
+###########  for rare Taxa ###########
+
+heat_phy_rar <- phyloseq( otu_table( OTU_rar, taxa_are_rows = F), 
+                      phy_tree( Tree),
+                      sample_data(ID),
+                      tax_table(phy_tax))
+
+# sample order
+IDphy <- ID[ID$gbgID %in% sample_names(heat_phy_rar),]
+sample.order <- as.character(IDphy[with(IDphy, order(Lake,DAT,DIL)),]$gbgID)
+
+plot_heatmap(heat_phy_rar, sample.order = sample.order, sample.label="Lake",
+             taxa.label = "Family", 
+             title="rare OTUs (< 1 % )")
+
+
+###########  for spourious Taxa ###########
+
+heat_phy_spou <- phyloseq( otu_table( OTU_spou, taxa_are_rows = F), 
+                      phy_tree( Tree),
+                      sample_data(ID),
+                      tax_table(phy_tax))
+
+# sample order
+IDphy <- ID[ID$gbgID %in% sample_names(heat_phy_spou),]
+sample.order <- as.character(IDphy[with(IDphy, order(Lake,DAT,DIL)),]$gbgID)
+
+plot_heatmap(heat_phy_spou, sample.order = sample.order, sample.label="Lake",
+             taxa.label = "Family", title="Spourious OTUs (< 0.1 % of abundance)")
+
+heat_plot + facet_wrap(~Lake)
