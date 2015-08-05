@@ -32,7 +32,7 @@ load("unifrac_dist.RData")
 #weighted jaccard distance based on rarefied OTU table
 load("OTUdist.RData")
 
-#euclidian distance Ecolog carbnon source utilization (Y/N)
+#euclidian distance Ecolog carbon source utilization (Y/N)
 load("NLSdist.RData")
 
 #euclidian distance Ecolog carbon uptake rate
@@ -41,7 +41,7 @@ load("EcoLYNdist.RData")
 # Importing metadata
 ID<-read.table("gbgID",header=TRUE, stringsAsFactors=F)
 
-# chaneg factor level for Dates
+# change factor level for Dates
 ID$DAT <- factor( ID$DAT, levels = c( "14Jun", "28Jun", "12Jul"))
 
 ###############
@@ -123,84 +123,11 @@ distanceDF <- join( join( join( NLSdist.DF, OTUdist.DF), unifrac_dist.DF),
 #add pair assignments
 distanceDF <- join( distanceDF, Comb, type = "left")
 
-############## plot distance scatterplots ######################################
-
-##### unifrac_dist  ~ EcoLYNdist #####
-
-# exclude among Lake distances and joined 0 distances  
-distanceDF_Lake <- distanceDF[ which(apply(distanceDF[,c( "unifrac_dist", "EcoLYNdist")], 1, sum) > 0),]
-distanceDF_Lake <- distanceDF_Lake[distanceDF_Lake$Lake != "full", ]
-
-G2 <- ggplot( distanceDF_Lake, aes( x = unifrac_dist, y = EcoLYNdist, 
-                              colour = Lake, shape = Lake))+
-  geom_point( alpha = 0.3)+
-  facet_wrap(~Lake)+
-  stat_smooth( method = "lm", se = F, size = 1)+
-  theme_bw( base_size = 15)+
-  theme( legend.position = "none")+
-  scale_colour_manual( values = c( "orange", "darkred", "darkgreen", "darkblue")) +
-  labs( x="", y= "")
-
-##### unifrac_dist  ~ NLSdist #####
-
-# exclude among Lake distances and joined 0 distances  
-distanceDF_Lake <- distanceDF[ which(apply(distanceDF[,c( "unifrac_dist", "NLSdist")], 1, sum) > 0),]
-distanceDF_Lake <- distanceDF_Lake[distanceDF_Lake$Lake != "full", ]
-
-G4 <- ggplot( distanceDF_Lake, aes( x = unifrac_dist, y = NLSdist, 
-                              colour = Lake, shape = Lake))+
-  geom_point( alpha = 0.3)+
-  facet_wrap(~Lake)+
-  stat_smooth( method = "lm", se = F, size = 1)+
-  theme_bw( base_size = 15)+
-  theme( legend.position = "none")+
-  scale_colour_manual( values = c( "orange", "darkred", "darkgreen", "darkblue")) + 
-  labs( x = "phylogenetic composition \n (weighted unifrac)",
-        y = "")
-
-##### OTUdist  ~ EcoLYNdist #####
-
-# exclude among Lake distances and joined 0 distances  
-distanceDF_Lake <- distanceDF[ which(apply(distanceDF[,c( "OTUdist", "EcoLYNdist")], 1, sum) > 0),]
-distanceDF_Lake <- distanceDF_Lake[distanceDF_Lake$Lake != "full", ]
-
-G1 <- ggplot( distanceDF_Lake, aes( x = OTUdist, y = EcoLYNdist, 
-                              colour = Lake, shape = Lake))+
-  geom_point( alpha = 0.3)+
-  facet_wrap(~Lake)+
-  stat_smooth( method = "lm", se = F, size = 1)+
-  theme_bw( base_size = 15)+
-  theme( legend.position = "none")+
-  scale_colour_manual( values = c( "orange", "darkred", "darkgreen", "darkblue")) + 
-  labs( y = "Functional distance \n (carbon sources utilization)",
-        x = "")
-
-##### OTUdist  ~ NLSdist #####
-
-# exclude among Lake distances and joined 0 distances  
-distanceDF_Lake <- distanceDF[ which(apply(distanceDF[,c( "OTUdist", "NLSdist")], 1, sum) > 0),]
-distanceDF_Lake <- distanceDF_Lake[distanceDF_Lake$Lake != "full", ]
-
-G3 <- ggplot( distanceDF_Lake, aes( x = OTUdist, y = NLSdist, 
-                              colour = Lake, shape = Lake))+
-  geom_point( alpha = 0.3)+
-  facet_wrap(~Lake)+
-  stat_smooth( method = "lm", se = F, size = 1)+
-  theme_bw( base_size = 15)+
-  theme( legend.position = "none")+
-  scale_colour_manual( values = c( "orange", "darkred", "darkgreen", "darkblue")) +
-  labs( x = "species composition \n (presence/absence)",
-        y = "Functional distance \n (average carbon uptake rate)")
-
-
-grid.arrange( G1, G2, G3, G4, main=textGrob(
-  "community composition vs functional distance",gp=gpar(fontsize=20)))
-
 
 
 ############## calculate Mantel test ###########################################
 
-# function to calculate mantel test etween tow matrices in a give Lake
+# function to calculate mantel test between tow matrices in a give Lake
 
 MantelLakes <- function(mat1,mat2,Lake,method,perm) {
   LakeID <- ID[ID$Lake == Lake,]$gbgID
@@ -248,9 +175,108 @@ ggplot(RES, aes(x=Lake, y=r2, fill=Lake, label = p))+
   facet_wrap(~comp)+
   theme_bw(base_size=15)+
   scale_fill_manual(values=c("orange","darkred","darkgreen","darkblue"))
-  
-  
 
+
+
+
+
+############## plot distance scatterplots ######################################
+
+# create dataframe for plotting rectangles
+
+DF.Rect <- data.frame( xmin = 0.3, xmax = 0.5, ymin = 0.75, ymax = 0.95)
+
+##### OTUdist  ~ EcoLYNdist #####
+
+# exclude among Lake distances and joined 0 distances  
+distanceDF_Lake <- distanceDF[ which(apply(distanceDF[,c( "OTUdist", "EcoLYNdist")], 1, sum) > 0),]
+distanceDF_Lake <- distanceDF_Lake[distanceDF_Lake$Lake != "full", ]
+
+G1 <- ggplot( distanceDF_Lake, aes( x = OTUdist, y = EcoLYNdist))+
+  geom_point( aes(alpha = 0.3,  colour = Lake, shape = Lake))+
+  geom_rect( data = DF.Rect, aes(x=NULL,y=NULL, xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+             fill = "white", alpha = 0.8) +
+  geom_text(data = RES[13:16, ], aes( x = 0.4, y = 0.9, label = paste("r^2 : ", r2, sep = "")),
+            parse = TRUE , colour = "black", size = 3) +
+  geom_text(data = RES[13:16, ], aes( x = 0.4, y = 0.8, label = paste("p : ", p, sep = "")),
+            parse = TRUE , colour = "black", size = 3) +
+  facet_wrap(~Lake)+
+  stat_smooth( method = "lm", se = F, size = 1, colour = "black")+
+  theme_bw( base_size = 15)+
+  theme( legend.position = "none")+
+  scale_colour_manual( values = c( "orange", "darkred", "darkgreen", "darkblue")) +
+  labs( x="", y= "functional distance\n(carbon source utilization)" )
+
+##### unifrac_dist  ~ EcoLYNdist #####
+
+# exclude among Lake distances and joined 0 distances  
+distanceDF_Lake <- distanceDF[ which(apply(distanceDF[,c( "unifrac_dist", "EcoLYNdist")], 1, sum) > 0),]
+distanceDF_Lake <- distanceDF_Lake[distanceDF_Lake$Lake != "full", ]
+
+G2 <- ggplot( distanceDF_Lake, aes( x = unifrac_dist, y = EcoLYNdist ))+
+  geom_point( aes(alpha = 0.3,  colour = Lake, shape = Lake))+
+  geom_rect( data = DF.Rect, aes(x=NULL,y=NULL, xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+             fill = "white", alpha = 0.8) +
+  geom_text(data = RES[9:12, ], aes( x = 0.4, y = 0.9, label = paste("r^2 : ", r2, sep = "")),
+            parse = TRUE , colour = "black", size = 3) +
+  geom_text(data = RES[9:12, ], aes( x = 0.4, y = 0.8, label = paste("p : ", p, sep = "")),
+            parse = TRUE , colour = "black", size = 3) +
+  facet_wrap(~Lake)+
+  stat_smooth( method = "lm", se = F, size = 1, colour = "black")+
+  theme_bw( base_size = 15)+
+  theme( legend.position = "none")+
+  scale_colour_manual( values = c( "orange", "darkred", "darkgreen", "darkblue")) +
+  labs( x="", y= "")
+
+##### OTUdist  ~ NLSdist #####
+
+# exclude among Lake distances and joined 0 distances  
+distanceDF_Lake <- distanceDF[ which(apply(distanceDF[,c( "OTUdist", "NLSdist")], 1, sum) > 0),]
+distanceDF_Lake <- distanceDF_Lake[distanceDF_Lake$Lake != "full", ]
+
+
+G3 <- ggplot( distanceDF_Lake, aes( x = OTUdist, y = NLSdist))+
+  geom_point( aes(alpha = 0.3,  colour = Lake, shape = Lake))+ 
+  geom_rect( data = DF.Rect, aes(x=NULL,y=NULL, xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+             fill = "white", alpha = 0.8) +
+  geom_text(data = RES[5:8, ], aes( x = 0.4, y = 0.9, label = paste("r^2 : ", r2, sep = "")),
+            parse = TRUE , colour = "black", size = 3) +
+  geom_text(data = RES[5:8, ], aes( x = 0.4, y = 0.8, label = paste("p : ", p, sep = "")),
+            parse = TRUE , colour = "black", size = 3) +
+  facet_wrap(~Lake)+
+  stat_smooth( method = "lm", se = F, size = 1, colour = "black")+
+  theme_bw( base_size = 15)+
+  theme( legend.position = "none")+
+  scale_colour_manual( values = c( "orange", "darkred", "darkgreen", "darkblue")) +
+  labs( x="species composition\n(presence/absence)", y= "functional distance\n(average carbon uptake rate)")
+
+
+##### unifrac_dist  ~ NLSdist #####
+
+# exclude among Lake distances and joined 0 distances  
+distanceDF_Lake <- distanceDF[ which(apply(distanceDF[,c( "unifrac_dist", "NLSdist")], 1, sum) > 0),]
+distanceDF_Lake <- distanceDF_Lake[distanceDF_Lake$Lake != "full", ]
+
+G4 <- ggplot( distanceDF_Lake, aes( x = unifrac_dist, y = NLSdist, )) +
+  geom_point( aes(alpha = 0.3,  colour = Lake, shape = Lake))+
+  geom_rect( data = DF.Rect, aes(x=NULL,y=NULL, xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+             fill = "white", alpha = 0.8) +
+  geom_text(data = RES[1:4, ], aes( x = 0.4, y = 0.9, label = paste("r^2 : ", r2, sep = "")),
+            parse = TRUE , colour = "black", size = 3) +
+  geom_text(data = RES[1:4, ], aes( x = 0.4, y = 0.8, label = paste("p : ", p, sep = "")),
+            parse = TRUE , colour = "black", size = 3) +
+  facet_wrap(~Lake)+
+  stat_smooth( method = "lm", se = F, size = 1, colour = "black")+
+  theme_bw( base_size = 15)+
+  theme( legend.position = "none")+
+  scale_colour_manual( values = c( "orange", "darkred", "darkgreen", "darkblue")) +
+  labs( x="phylogenetic composition\n(weighted unifrac)", y= "")
+
+
+Figure_5 <- arrangeGrob( G1, G2, G3, G4, main=textGrob(
+  "community composition vs functional distance",gp=gpar(fontsize=20)))
+
+ggsave( filename = "Figure_5.pdf", plot = Figure_5, width = 10, height = 10)
 
 
 ############## plot NMDS plots #################################################
@@ -380,4 +406,32 @@ G_nmds_4 <- ggplot(fitp,aes(x=MDS1,y=MDS2))+
 
 
 grid.arrange(G_nmds_1,G_nmds_2,G_nmds_3,G_nmds_4)
+
+########################### heatmaps ###########################################
+setwd("~/Documents/01_PhD/01_Research/02_rare_Biosphere/R scripts")
+
+EcoLYN<-as.matrix(read.table("EcoLYN.txt",sep="\t"))
+NLSr<-as.matrix(read.table("NLSr.txt",sep="\t"))
+
+EcoLYN <- EcoLYN*100
+
+ID$DAT <- factor(ID$DAT, levels = c("14Jun", "28Jun", "12Jul"))
+ID$DIL <- factor(ID$DIL, levels = c("0","1","2","3","4","5","6","7","8","9","10","S"))
+rownames(ID) <- ID$barcode
+
+phylo_YN <- phyloseq( otu_table( NLSr, taxa_are_rows = F), 
+                      sample_data(ID))
+
+# sample order
+IDphy <- ID[ID$barcode %in% sample_names(phylo_YN),]
+sample.order <- as.character(IDphy[with(IDphy, order(Lake,DIL,DAT)),]$barcode)
+
+NLSrplot <- plot_heatmap(phylo_YN, sample.order = sample.order, 
+                         sample.label="Lake")
+
+NLSrplot +
+  facet_wrap(DAT ~ Lake, scales = "free_x")+
+  theme_bw(base_size=15)
+
+
 
