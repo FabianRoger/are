@@ -41,10 +41,54 @@ DIV  <- DIV[,c(1:6,9,11,12,13,15)]
 DIV <- DIV[,-c(8,10)]
 
 #check corrleation among remaining metrics
-ggpairs(DIV[,7:9])
+ggpairs(DIV[,7:9], diag = list(continuous = "bar"))
 
 # average Diversiyt
 avDIV<-ddply(DIV[,-3],.(Lake,DIL), numcolwise(mean,na.rm=T))
+
+############ plot diversity gradient ##########################################
+
+#reorder factor level
+DIV$DAT <- factor( DIV$DAT, levels = c( "14Jun", "28Jun", "12Jul"))
+DIV$DIL <- factor( DIV$DIL, levels = c( "0", "1", "2", "3", "4", "5",
+                                        "6", "7", "8", "9", "10", "S"))
+# Hill1
+G_Hill <- ggplot(DIV, aes( x = DIL, y = Hill1, colour = Lake, shape = Lake, group = 1))+
+  geom_point()+
+  facet_wrap( ~DAT * Lake)+
+  theme_bw(base_size = 8)+
+  stat_smooth( method = "lm", se = F, colour = "grey", alpha = 0.5)+
+  scale_y_log10(breaks=c(2,4,8,16,32,64,128,256,512))+
+  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
+  labs( x = "dillution factor", y = "Hill1" , 
+        title = "effective number of species (Hill1) ")+
+  theme( legend.position = "none")
+
+# S
+G_S <- ggplot(DIV, aes( x = DIL, y = S, colour = Lake, shape = Lake, group = 1))+
+  geom_point()+
+  facet_wrap( ~DAT * Lake)+
+  theme_bw(base_size = 8)+
+  stat_smooth( method = "lm", se = F, colour = "grey", alpha = 0.5)+
+  scale_y_log10(breaks=c(2,4,8,16,32,64,128,256,512))+
+  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
+  labs( x = "dillution factor", y = "S", 
+        title = "OTU richness (S) ")+
+  theme( legend.position = "none")
+
+# PSE
+G_PSE <- ggplot(DIV, aes( x = DIL, y = PSEs, colour = Lake, shape = Lake, group = 1))+
+  geom_point()+
+  facet_wrap( ~DAT * Lake)+
+  theme_bw(base_size = 8)+
+  stat_smooth( method = "lm", se = F, colour = "grey", alpha = 0.5)+
+  scale_colour_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
+  labs( x = "dillution factor", y = "PSE", 
+        title = "phylogenetic species eveness (PSE)")+
+  theme( legend.position = "none")
+
+G_div <- arrangeGrob(G_S, G_Hill, G_PSE, nrow = 2)
+ggsave( filename = "Figure_1.pdf", plot = G_div, width = 8, height = 8)
 
 
 ############# import Data   #############
@@ -330,12 +374,17 @@ G5 <- ggplot(SlopesDIN, aes(x=medSlope, y=DIV, colour=Lake))+
   labs(title="nutrient depletion (DIN)", x="Slope")
 
 grid.arrange(G1,G2,G3,G4,G5)
+Figure_3 <- arrangeGrob(G1,G2,G3,G4,G5)
 
+ggsave("Figure_3.pdf", Figure_3, width = 8, height = 8)
 
 save.image("bootstrap_10000_3CI.RData")
 
+##### without runing code, load image #####
 
-#################### with alternative EF and by DATE where possible ##############
+load("bootstrap_10000_new.RData")
+
+################### with alternative EF and by DATE where possible ##############
 
 
 
@@ -445,9 +494,9 @@ grid.arrange(G1_2,G2_2,G3_2)
 maxBM_l <- melt( maxBM, id.vars = c("Lake","DIL","Cells"))
 maxBM_l$variable <- factor( maxBM_l$variable, levels = c( "S", "PSEs", "Hill1"))
 
-G1_s <- ggplot( maxBM_l, aes( x = scale(value), y = scale(Cells), colour= Lake))+
+G1_s <- ggplot( maxBM_l, aes( x = value, y = Cells, colour= Lake))+
   geom_point( ) +
-  facet_wrap( ~ variable * Lake, scales = "free") +
+  facet_wrap( ~ variable * Lake, scales = "free_x") +
   stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
   theme_bw( base_size = 15)+
   theme(legend.position = "none")+
@@ -465,7 +514,7 @@ CV_l$variable <- factor( CV_l$variable, levels = c( "S", "PSEs", "Hill1"))
 
 G2_s <- ggplot( CV_l, aes( x = value, y = Stability, colour= Lake))+
   geom_point( ) +
-  facet_wrap( ~ variable * Lake, scales = "free") +
+  facet_wrap( ~ variable * Lake, scales = "free_x") +
   stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
   theme_bw( base_size = 15)+
   theme(legend.position = "none")+
@@ -481,7 +530,7 @@ EP_l$variable <- factor( EP_l$variable, levels = c( "S", "PSEs", "Hill1"))
 
 G3_s <- ggplot( EP_l, aes( x = value, y = NC, colour= Lake))+
   geom_point( ) +
-  facet_wrap( ~ variable * Lake, scales = "free") +
+  facet_wrap( ~ variable * Lake, scales = "free_x") +
   stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
   theme_bw( base_size = 15)+
   theme(legend.position = "none")+
@@ -491,7 +540,7 @@ G3_s <- ggplot( EP_l, aes( x = value, y = NC, colour= Lake))+
 
 G4_s <- ggplot( EP_l, aes( x = value, y = mean.r, colour= Lake))+
   geom_point( ) +
-  facet_wrap( ~ variable * Lake, scales = "free") +
+  facet_wrap( ~ variable * Lake, scales = "free_x") +
   stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
   theme_bw( base_size = 15)+
   theme(legend.position = "none")+
@@ -508,7 +557,7 @@ NUT_l$variable <- factor( NUT_l$variable, levels = c( "S", "PSEs", "Hill1"))
 
 G5_s <- ggplot( NUT_l, aes( x = value, y = DIN, colour= Lake))+
   geom_point( ) +
-  facet_wrap( ~ variable * Lake, scales = "free") +
+  facet_wrap( ~ variable * Lake, scales = "free_x") +
   stat_smooth( method = "lm", se = FALSE, linetype = "dashed") +
   theme_bw( base_size = 15)+
   theme(legend.position = "none")+
@@ -520,6 +569,8 @@ G5_s <- ggplot( NUT_l, aes( x = value, y = DIN, colour= Lake))+
 
 grid.arrange(G1_s,G3_s,G4_s,G2_s,G5_s)
 
+Figure_4 <- arrangeGrob(G1_s,G3_s,G4_s,G2_s,G5_s)
+ggsave("Figure_4.pdf", Figure_4, width = 18, height = 25)
 
 
 
