@@ -1,0 +1,24 @@
+---
+title: "Roger et al 2015"
+author: "Fabian Roger"
+date: "9 Oct 2015"
+output: html_document
+---
+
+In this document we describe the complete data analysis for the article **Roger et al (YEAR)**
+In order to ensure reproducability, we use the package "checkpoint"
+
+```{r, echo=TRUE}
+#install.packages("checkpoint")
+#library(checkpoint)
+```
+
+#Bacterial Cell counts
+
+in this section we 
+
++ import the raw data as gated by the flow-cytometer
++ clean and bias-correct the counts
++ plot the growth curves
++ calculate maximum cell counts to be used in further analysis
+
