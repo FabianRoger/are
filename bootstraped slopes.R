@@ -384,6 +384,169 @@ save.image("bootstrap_10000_3CI.RData")
 
 load("bootstrap_10000_new.RData")
 
+######################## alternative test with Spearman's rank correlation #####
+
+RankDIN <- RankEPmr <- RankEPNC <- 
+  RankCV  <- Rank_maxBM <- data.frame(
+    Lake = rep(Lakes, each=3), DIV = rep(DIV_ind,4),rho = NA,
+    pval = NA)
+
+
+################ maximum Biomass ###########
+
+for (L in Lakes) {
+  for (V in DIV_ind) {
+    COR <- cor.test(maxBM[maxBM$Lake == L,"Cells"], maxBM[maxBM$Lake == L,V],
+                    method = "spearman")
+    Rank_maxBM [Rank_maxBM$Lake == L & Rank_maxBM$DIV == V ,]$rho <- round(COR$estimate, 2)
+    Rank_maxBM [Rank_maxBM$Lake == L & Rank_maxBM$DIV == V ,]$pval <- round(COR$p.value, 3)
+    
+  }
+}
+
+########## average uptake rate ##########
+
+for (L in Lakes) {
+  for (V in DIV_ind) {
+    COR <- cor.test(avEP[avEP$Lake == L, "mean.r"], avEP[avEP$Lake == L, V ],
+                    method = "spearman")
+    RankEPmr [RankEPmr$Lake == L & RankEPmr$DIV == V ,]$rho <- round(COR$estimate, 2)
+    RankEPmr [RankEPmr$Lake == L & RankEPmr$DIV == V ,]$pval <- round(COR$p.value, 3)
+    
+  }
+}
+
+########## average NC ##########
+
+for (L in Lakes) {
+  for (V in DIV_ind) {
+    COR <- cor.test(avEP[avEP$Lake == L, "NC"], avEP[avEP$Lake == L, V ],
+                    method = "spearman")
+    RankEPNC [RankEPNC$Lake == L & RankEPNC$DIV == V ,]$rho <- round(COR$estimate, 2)
+    RankEPNC [RankEPNC$Lake == L & RankEPNC$DIV == V ,]$pval <- round(COR$p.value, 3)
+    
+  }
+}
+
+################ Stability - CV ###########
+
+for (L in Lakes) {
+  for (V in DIV_ind) {
+    COR <- cor.test(CV[CV$Lake == L, "Stability"], CV[CV$Lake == L, V ],
+                    method = "spearman")
+    RankCV [RankCV$Lake == L & RankCV$DIV == V ,]$rho <- round(COR$estimate, 2)
+    RankCV [RankCV$Lake == L & RankCV$DIV == V ,]$pval <- round(COR$p.value, 3)
+    
+  }
+}
+
+
+################# Nutrients ################
+
+for (L in Lakes) {
+  for (V in DIV_ind) {
+    COR <- cor.test(NUT[NUT$Lake == L, "DIN"], NUT[NUT$Lake == L, V ],
+                    method = "spearman")
+    RankDIN [RankDIN$Lake == L & RankDIN$DIV == V ,]$rho <- round(COR$estimate, 2)
+    RankDIN [RankDIN$Lake == L & RankDIN$DIV == V ,]$pval <- round(COR$p.value, 3)
+    
+  }
+}
+
+
+####### colour code p-values in graph ###
+RankDIN$sig  <- 0
+RankDIN[ RankDIN$pval <= 0.05, ]$sig  <- 1 # no significant correlations
+
+RankEPmr$sig  <- 0
+RankEPmr[ RankEPmr$pval <= 0.05, ]$sig  <- 1
+
+RankEPNC$sig  <- 0
+RankEPNC[ RankEPNC$pval <= 0.05, ]$sig  <- 1
+  
+RankCV$sig  <- 0
+RankCV[ RankCV$pval <= 0.05, ]$sig  <- 1
+
+Rank_maxBM$sig  <- 0
+Rank_maxBM[ Rank_maxBM$pval <= 0.05, ]$sig  <- 1
+
+
+
+G1R <- ggplot(Rank_maxBM, aes(x=rho, y=DIV, fill = Lake, label = pval, colour = as.factor(sig)))+
+  geom_vline(xintercept = 0, linetype="dashed", colour = "lightgrey")+
+  geom_point(size = 3, shape = 25)+
+  geom_text(size=3, vjust = -1)+
+  facet_wrap(~Lake,nrow=1)+
+  theme_bw(base_size=15)+
+  theme(legend.position="none")+
+  scale_x_continuous(limits = c(-1, 1), breaks=c(-1, 0, 1))+
+  scale_fill_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
+  scale_colour_manual(values=c("black", "red"))+
+  labs(title="maximum Biomass", x="Spearman's rho")
+
+G3R <- ggplot(RankEPmr, aes(x=rho, y=DIV, fill = Lake, label = pval, colour = as.factor(sig)))+
+  geom_vline(xintercept = 0, linetype="dashed", colour = "lightgrey")+
+  geom_point(size = 3, shape = 25)+
+  geom_text(size=3, vjust = -1)+
+  facet_wrap(~Lake,nrow=1)+
+  theme_bw(base_size=15)+
+  theme(legend.position="none")+
+  scale_x_continuous(limits = c(-1, 1), breaks=c(-1, 0, 1))+
+  scale_fill_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
+  scale_colour_manual(values=c("black", "red"))+
+  labs(title="mean carbon uptake rate", x="Spearman's rho")
+
+G2R <- ggplot(RankEPNC, aes(x=rho, y=DIV, fill = Lake, label = pval, colour = as.factor(sig)))+
+  geom_vline(xintercept = 0, linetype="dashed", colour = "lightgrey")+
+  geom_point(size = 3, shape = 25)+
+  geom_text(size=3, vjust = -1)+
+  facet_wrap(~Lake,nrow=1)+
+  theme_bw(base_size=15)+
+  theme(legend.position="none")+
+  scale_x_continuous(limits = c(-1, 1), breaks=c(-1, 0, 1))+
+  scale_fill_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
+  scale_colour_manual(values=c("black", "red"))+
+  labs(title="Number of C sources", x="Spearman's rho")
+
+G4R <- ggplot(RankCV, aes(x=rho, y=DIV, fill = Lake, label = pval, colour = as.factor(sig)))+
+  geom_vline(xintercept = 0, linetype="dashed", colour = "lightgrey")+
+  geom_point(size = 3, shape = 25)+
+  geom_text(size=3, vjust = -1)+
+  facet_wrap(~Lake,nrow=1)+
+  theme_bw(base_size=15)+
+  theme(legend.position="none")+
+  scale_x_continuous(limits = c(-1, 1), breaks=c(-1, 0, 1))+
+  scale_fill_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
+  scale_colour_manual(values=c("black", "red"))+
+  labs(title="Stability", x="Spearman's rho")
+
+G5R <- ggplot(RankDIN, aes(x=rho, y=DIV, fill = Lake, label = pval, colour = as.factor(sig)))+
+  geom_vline(xintercept = 0, linetype="dashed", colour = "lightgrey")+
+  geom_point(size = 3, shape = 25)+
+  geom_text(size=3, vjust = -1)+
+  facet_wrap(~Lake,nrow=1)+
+  theme_bw(base_size=15)+
+  theme(legend.position="none")+
+  scale_x_continuous(limits = c(-1, 1), breaks=c(-1, 0, 1))+
+  scale_fill_manual(values=c("orange", "darkred","darkgreen","darkblue"))+
+  scale_colour_manual(values=c("black", "red"))+
+  labs(title="nutrient depletion (DIN)", x="Spearman's rho")
+
+grid.arrange(G1R,G2R,G3R,G4R,G5R)
+
+Figure_S_4 <- arrangeGrob( G1R,G2R,G3R,G4R,G5R)
+
+ggsave( filename = "Figure_S_4.pdf", plot = Figure_S_4, width = 10, height = 10)
+
+
+
+
+
+
+
+
+
+
 ################### with alternative EF and by DATE where possible ##############
 
 
