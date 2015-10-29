@@ -876,7 +876,7 @@ OTU_rar  <- OTUav[,rareOTU]
 
 spouriousOTU_list <- apply(OTUav,1,function(x) names(which(x <= 0.001*sum(x))))
 spouriousOTU <- unique(unlist(spouriousOTU_list))
-spouriousOTU <- spouriousOTU[which(! spouriousOTU %in% rareOTU)]
+spouriousOTU <- spouriousOTU[-c(which(spouriousOTU %in% rareOTU), which(spouriousOTU %in% abundantOTU))]
 OTU_spou <- OTUav[,spouriousOTU]
 
 #taxa table
@@ -898,13 +898,18 @@ IDphy <- ID[ID$gbgID %in% sample_names(heat_phy_ab),]
 sample.order <- as.character(IDphy[with(IDphy, order(Lake,DIL)),]$gbgID)
 
 heat_plot <- plot_heatmap(heat_phy_ab, sample.order = sample.order, sample.label="DIL",
-             taxa.label = "Family", first.taxa = "OTU_19",
-             title="abundant OTUs (> 0.1 % of abundance in min 1 sample)")
+             taxa.label = "Class", first.taxa = "OTU_19",
+             title="abundant OTUs (> 1 % of abundance in min 1 sample)")
 
-heat_plot + 
+heat_abund <- heat_plot + 
   facet_grid(~Lake, scales = "free") + 
   theme_bw(base_size = 15)+
   theme(axis.text.y = element_text(hjust = 1, size=8))
+
+heat_abund
+
+ggsave("Figure_2.pdf", heat_abund, width = 10, height = 10)
+
 
 ###########  for rare Taxa ###########
 
@@ -917,9 +922,15 @@ heat_phy_rar <- phyloseq( otu_table( OTU_rar, taxa_are_rows = F),
 IDphy <- ID[ID$gbgID %in% sample_names(heat_phy_rar),]
 sample.order <- as.character(IDphy[with(IDphy, order(Lake,DAT,DIL)),]$gbgID)
 
-plot_heatmap(heat_phy_rar, sample.order = sample.order, sample.label="Lake",
+heat_plot <- plot_heatmap(heat_phy_rar, sample.order = sample.order, sample.label="Lake",
              taxa.label = "Family", 
              title="rare OTUs (< 1 % )")
+
+heat_plot + 
+  facet_grid(~Lake, scales = "free") + 
+  theme_bw(base_size = 15)+
+  theme(axis.text.y = element_text(hjust = 1, size=8))
+
 
 
 ###########  for spourious Taxa ###########
@@ -933,7 +944,13 @@ heat_phy_spou <- phyloseq( otu_table( OTU_spou, taxa_are_rows = F),
 IDphy <- ID[ID$gbgID %in% sample_names(heat_phy_spou),]
 sample.order <- as.character(IDphy[with(IDphy, order(Lake,DAT,DIL)),]$gbgID)
 
-plot_heatmap(heat_phy_spou, sample.order = sample.order, sample.label="Lake",
+heat_plot <- plot_heatmap(heat_phy_spou, sample.order = sample.order, sample.label="Lake",
              taxa.label = "Family", title="Spourious OTUs (< 0.1 % of abundance)")
 
-heat_plot + facet_wrap(~Lake)
+heat_plot + 
+  facet_grid(~Lake, scales = "free") + 
+  theme_bw(base_size = 15)+
+  theme(axis.text.y = element_text(hjust = 1, size=8))
+
+
+
