@@ -1,0 +1,32 @@
+---
+title: "Analysis of Ecolog plates"
+author: "Fabian Roger"
+date: "29 Oct 2015"
+output:
+  html_document:
+    fig_caption: yes
+    toc: yes
+  pdf_document:
+    latex_engine: lualatex
+    toc: yes
+---
+
+In this script I import and clean the data from the 
+Carbon Source Utilization Profiling using the BIOLOG™ Ecoplates
+
+from Graland et al 1996: "BIOLOG plates, 96 well microtiter plates containing separate sole C sources and a redox indicator dye, produce patterns of potential C source utilization for microbial communities. "
+The Ecoplates contain 31 different carbon sources in triplicates and three negative control with the dye but no carbon source. 
+
+We incubated the plates directly with 150µl in each well and incubated them in the dark at room temperature for up to 100 hours.
+The plates were measured approximately every 12 hours to estimate the rate of the colour development.
+
+first, we import the data. It's three files, one for each sampling date. We
+merge them into one dataframe and add a date column
+
+```{r}
+EcoL614<-read.csv("EcoLogDocs/EcoLog06-14.csv") 
+EcoL628<-read.csv("EcoLogDocs/EcoLog06-28.csv") 
+EcoL712<-read.csv("EcoLogDocs/EcoLog07-12.csv") 
+
+```
+
