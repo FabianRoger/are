@@ -273,10 +273,10 @@ G4 <- ggplot( distanceDF_Lake, aes( x = unifrac_dist, y = NLSdist, )) +
   labs( x="phylogenetic composition\n(weighted unifrac)", y= "")
 
 
-Figure_5 <- arrangeGrob( G1, G2, G3, G4, main=textGrob(
+Figure_4 <- arrangeGrob( G1, G2, G3, G4, main=textGrob(
   "community composition vs functional distance",gp=gpar(fontsize=20)))
 
-ggsave( filename = "Figure_5.pdf", plot = Figure_5, width = 10, height = 10)
+ggsave( filename = "Figure_4.pdf", plot = Figure_4, width = 10, height = 10)
 
 
 ############## plot NMDS plots #################################################
@@ -300,11 +300,11 @@ find_hull <- function(df) df[chull(df$MDS1, df$MDS2), ]
 hulls <- ddply(fitp[,c("MDS1","MDS2","Lake","DAT")], .(Lake,DAT), find_hull)
 
 G_nmds_1 <- ggplot(fitp,aes(x=MDS1,y=MDS2))+
-  geom_point(data=fitp,aes(colour=Lake,shape=Lake,size=4))+
-  geom_text(data=fitp,aes(colour=Lake,label=DIL,hjust=-0.7,size=4))+
+  geom_point(data=fitp,aes(colour=Lake,shape=Lake) ,size=2)+
+  geom_text(data=fitp,aes(colour=Lake,label=DIL,hjust=-0.7) ,size=2)+
   geom_polygon(data=hulls,aes(alpha=0.8,fill=Lake))+
   facet_wrap(~DAT)+
-  theme_bw(base_size=15)+
+  theme_bw(base_size=12)+
   scale_colour_manual(values=c("orange","darkred","darkgreen","darkblue"))+
   scale_fill_manual(values=c("orange","darkred","darkgreen","darkblue"))+
   theme(legend.position="none")+
@@ -333,11 +333,11 @@ find_hull <- function(df) df[chull(df$MDS1, df$MDS2), ]
 hulls <- ddply(fitp[,c("MDS1","MDS2","Lake","DAT")], .(Lake,DAT), find_hull)
 
 G_nmds_2 <- ggplot(fitp,aes(x=MDS1,y=MDS2))+
-  geom_point(data=fitp,aes(colour=Lake,shape=Lake,size=4))+
-  geom_text(data=fitp,aes(colour=Lake,label=DIL,hjust=-0.7,size=4))+
+  geom_point(data=fitp,aes(colour=Lake,shape=Lake) ,size=2)+
+  geom_text(data=fitp,aes(colour=Lake,label=DIL,hjust=-0.7) ,size=2)+
   geom_polygon(data=hulls,aes(alpha=0.8,fill=Lake))+
   facet_wrap(~DAT)+
-  theme_bw(base_size=15)+
+  theme_bw(base_size=12)+
   scale_colour_manual(values=c("orange","darkred","darkgreen","darkblue"))+
   scale_fill_manual(values=c("orange","darkred","darkgreen","darkblue"))+
   theme(legend.position="none")+
@@ -363,11 +363,11 @@ find_hull <- function(df) df[chull(df$MDS1, df$MDS2), ]
 hulls <- ddply(fitp[,c("MDS1","MDS2","Lake","DAT")], .(Lake,DAT), find_hull)
 
 G_nmds_3 <- ggplot(fitp,aes(x=MDS1,y=MDS2))+
-  geom_point(data=fitp,aes(colour=Lake,shape=Lake,size=4))+
-  geom_text(data=fitp,aes(colour=Lake,label=DIL,hjust=-0.7,size=4))+
+  geom_point(data=fitp,aes(colour=Lake,shape=Lake), size=2)+
+  geom_text(data=fitp,aes(colour=Lake,label=DIL,hjust=-0.7), size=2)+
   geom_polygon(data=hulls,aes(alpha=0.8,fill=Lake))+
   facet_wrap(~DAT)+
-  theme_bw(base_size=15)+
+  theme_bw(base_size=12)+
   scale_colour_manual(values=c("orange","darkred","darkgreen","darkblue"))+
   scale_fill_manual(values=c("orange","darkred","darkgreen","darkblue"))+
   theme(legend.position="none")+
@@ -393,11 +393,11 @@ find_hull <- function(df) df[chull(df$MDS1, df$MDS2), ]
 hulls <- ddply(fitp[,c("MDS1","MDS2","Lake","DAT")], .(Lake,DAT), find_hull)
 
 G_nmds_4 <- ggplot(fitp,aes(x=MDS1,y=MDS2))+
-  geom_point(data=fitp,aes(colour=Lake,shape=Lake,size=4))+
-  geom_text(data=fitp,aes(colour=Lake,label=DIL,hjust=-0.7,size=4))+
+  geom_point(data=fitp,aes(colour=Lake,shape=Lake), size=2)+
+  geom_text(data=fitp,aes(colour=Lake,label=DIL,hjust=-0.7), size=2)+
   geom_polygon(data=hulls,aes(alpha=0.8,fill=Lake))+
   facet_wrap(~DAT)+
-  theme_bw(base_size=15)+
+  theme_bw(base_size=12)+
   scale_colour_manual(values=c("orange","darkred","darkgreen","darkblue"))+
   scale_fill_manual(values=c("orange","darkred","darkgreen","darkblue"))+
   theme(legend.position="none")+
@@ -407,8 +407,13 @@ G_nmds_4 <- ggplot(fitp,aes(x=MDS1,y=MDS2))+
 
 grid.arrange(G_nmds_1,G_nmds_2,G_nmds_3,G_nmds_4)
 
+Figure_S_2 <- arrangeGrob( G_nmds_1,G_nmds_2,G_nmds_3,G_nmds_4)
+
+ggsave( filename = "Figure_S_2.pdf", plot = Figure_S_2, width = 10, height = 6)
+
 ########################### heatmaps ###########################################
 setwd("~/Documents/01_PhD/01_Research/02_rare_Biosphere/R scripts")
+library(phyloseq)
 
 EcoLYN<-as.matrix(read.table("EcoLYN.txt",sep="\t"))
 NLSr<-as.matrix(read.table("NLSr.txt",sep="\t"))
