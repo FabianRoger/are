@@ -14,19 +14,357 @@ output:
 In this script I import and clean the data from the 
 Carbon Source Utilization Profiling using the BIOLOG™ Ecoplates
 
-from Graland et al 1996: "BIOLOG plates, 96 well microtiter plates containing separate sole C sources and a redox indicator dye, produce patterns of potential C source utilization for microbial communities. "
+The plates have the following layout:
+![](EcoLogDocs/Ecoplate.jpg)   
+
+from Graland et al 1996:
+
+> BIOLOG plates, 96 well microtiter plates containing separate sole C sources and a redox indicator dye, produce patterns of potential C source utilization for microbial communities. 
+
 The Ecoplates contain 31 different carbon sources in triplicates and three negative control with the dye but no carbon source. 
+The carbon sources are in the wells `B1` to `H4`, the negative control is in well `A1`. 
 
 We incubated the plates directly with 150µl in each well and incubated them in the dark at room temperature for up to 100 hours.
 The plates were measured approximately every 12 hours to estimate the rate of the colour development.
 
-first, we import the data. It's three files, one for each sampling date. We
-merge them into one dataframe and add a date column
+first, we import the data and have a look at it
 
 ```{r}
-EcoL614<-read.csv("EcoLogDocs/EcoLog06-14.csv") 
-EcoL628<-read.csv("EcoLogDocs/EcoLog06-28.csv") 
-EcoL712<-read.csv("EcoLogDocs/EcoLog07-12.csv") 
+EcoL <- read.table("EcoLogDocs/Ecolog.txt", stringsAsFactors = F)
+head(EcoL)
+unique(EcoL$Sampling)
+unique(EcoL$rep)
+unique(EcoL$Date)
+```
+
+`EcoL` has the following `r ncol(EcoL)` columns: `r colnames(EcoL)`
+
+`$Date` and `$Time` give the exact timepoint when the plate was read and `$Sampling`
+represents the three independent sampling points. the `$hour` column gives the nominal
+timepoint of the reading. The `$BOT`column says from which bottle the sample was taken.
+
+looking more closely at the `$OD` column, we can see that not all entries are numeric
+
+```{r}
+is.numeric(EcoL$OD)
+```
+
+let's look which sample are concerened:
+```{r, warning=FALSE, echo=TRUE}
+unique(EcoL[which(is.na(as.numeric(EcoL$OD))), ]$Sampling)
+unique(EcoL[which(is.na(as.numeric(EcoL$OD))), ]$BOT)
+unique(EcoL[which(is.na(as.numeric(EcoL$OD))), ]$hour)
+```
+
+We can see that the it is the 24h reading from all plates of the first sampling that don't have any OD readings.
+It seems like the template files have been saved instead of the actual readings. The data are lost, we have to exclude 
+them from the dataset. After exclusion we can transform OD to numeric as all none numeric values are gone
+
+```{r, warning=FALSE}
+EcoL <- EcoL[-c( which( is.na( as.numeric( EcoL$OD)))), ]
+EcoL$OD700 <- as.numeric(EcoL$OD700)
+```
+
+next, we merge the date and time column and transform it into POSIXct format. We
+then proceed and add and `$dhour`column that gives the exact time diffrence
+(in hours) from the first to the last reading for each plate
+
+```{r, echo=FALSE}
+EcoL$Timepoint <- as.POSIXct( strptime( paste( EcoL$Date, EcoL$Time),"%Y-%m-%d %H:%M:%S"))
+
+EcoL.list <- split(EcoL, list(EcoL$BOT, EcoL$Sampling))
+
+EcoL.list <- lapply(EcoL.list, function(x) { x$dhour  <- difftime( x$Timepoint[1], x$Timepoint, units = "hours") * -1 
+                                             return(x) })
+EcoL <- do.call( rbind, EcoL.list)
+
+EcoL$dhour <- as.numeric(EcoL$dhour)
+
+head(EcoL[ ,c("BOT", "OD700", "dhour")], 1)
+tail(EcoL[ ,c("BOT", "OD700", "dhour")], 1)
 
 ```
+
+let's look at this information to see when the plates have been read and how long they have been incubated
+
+```{r, warning=FALSE, echo=FALSE}
+select(EcoL, Sampling, BOT, hour, dhour) %>%
+  
+  mutate(Sampling = as.factor(Sampling), dhour = as.numeric(dhour)) %>%
+  
+  distinct() %>%
+  
+  ggplot(aes(x = dhour, y = Sampling, colour = Sampling))+ 
+    geom_point(alpha = 0.6)+
+    geom_vline( aes(xintercept = hour, colour = Sampling), linetype = "dashed") +
+    theme_bw(base_size = 13)+
+    facet_wrap(~ Sampling, nrow = 3, scales = "free_y" )+
+    labs(x = "timepoint of sampling", y = "sampling occasion", title = "distribution of readings")+
+    theme(legend.position = "none")
+```
+
+we can see that the exact intervals vary  and that couriously, the total number of readings goes up to
+9 per plate at the last sampling. The experimentator seemed to have gotten increasingly 
+excited and motivated throughout the coures of the experiment.
+
+next, we check the blanks:
+
+```{r, echo=FALSE}
+EcoLb <-  filter(EcoL, Wells == "A1") 
+  
+ggplot(EcoLb, aes(x = OD700))+
+  geom_histogram(binwidth = 0.005)+
+  labs(title = "histogram of OD values in the blank", x = "OD700")+
+  theme_bw()
+
+```
+
+The vast majority of all readings in the blanks is close to 0, but there are some outliers. 
+Let's check the distribution of the median blanks (the median of the three replicates at each reading)
+
+```{r, echo=TRUE}
+EcoLb <- EcoLb %>%
+  group_by(BOT, Sampling, Timepoint) %>%
+  summarise(medium_OD700 = median(OD700))
+  
+  ggplot(EcoLb, aes(x = medium_OD700))+
+  geom_histogram(binwidth = 0.005)+
+  labs(title = "histogram of median OD values in the blank", x = "OD700")+
+  theme_bw()
+
+```
+
+There is no median outlier with an OD > `r max(EcoLb$medium_OD700)` which are realistic background values.
+
+We can now proceed and substract the median blanks from all OD readings.
+for that we exclude the `A1` wells from EcoL and then join the medium blanks to the remaining data
+
+```{r}
+EcoL <- filter( EcoL, Wells != "A1")
+EcoL <- left_join( EcoL, EcoLb)
+EcoL$OD700 <- EcoL$OD700 - EcoL$medium_OD700 
+```
+
+let's look at how a plate looks:
+
+```{r, echo=FALSE}
+EcoL %>% filter(BOT == 5, Sampling == 28.06) %>%
+  
+  ggplot( aes( x = as.numeric(dhour), y = OD700, colour = Wells))+
+  geom_point()+
+  geom_smooth(method = "loess", se = F)+
+  facet_wrap( ~Wells*rep, ncol = 12)+
+  geom_hline(aes(yintercept = 0.2), linetype = "dashed")+
+  theme_bw()+
+  theme(legend.position = "none")+
+  labs(x = "time (hours)", title = "example ecolog plate (BOT 5, sampling 06/28)\ndashed line is OD cutoff (OD = 0.2), the 3 replicates of the same carbon sources are shown in same colour ")
+  
+```
+
+In most cases, the three replicates react rather similar, however this is not alwas the case ( see wells `H3`or `G1` for example)
+
+starting from the blanked wells, we will no compute two response variables. 
+
++ the number of positive carbon sources on each plate
++ the median uptake rate of each carbon source on each plate. 
+
+Only those wells that show an OD developpment of over 0.2 are counted as
+positives
+
+because we need the full dataset to calculate the median uptake rate, we start with this:
+
+### median uptake rate of carbon sources
+
+to calculate the uptake rate of the carbon source, we fit a modified Gompertz
+model of the form
+
+$$ OD = K*exp(-exp{(\frac{r*e}{K}*(l-t)+1)} $$
+
+where 
+
++ $r$ is the maximum slope
++ $K$ the maximum OD and 
++ $l$ the lag phase
+
+we then extract the $r$ parameter and take it as the **uptake rate** 
+
+However, we only keep $r$ estimates of models that 
+
++ converged
++ the parameter estimate for $r$ is significant at p < 0.01
+
+**only wells that reach an OD ≥ 0.2 are counted as *positive*. Accordingly, we attempt to model only those and exclude all others**
+
+also, to make the fitting easier, we set all OD values < 0 to 0. (OD values < 0 arise if the reding is smaller than the
+reading of the median blank. It is noise nad no true signal)
+
+```{r}
+EcoL[ EcoL$OD700 < 0 , ]$OD700 <- 0
+
+EcoL0.2 <- group_by(EcoL, Sampling, BOT, Wells, rep) %>%
+  summarize(maxOD = max(OD700)) %>%
+  filter(maxOD >= 0.2) %>%
+  inner_join(EcoL, .)
+
+fitDF <- EcoL0.2 %>%
+  group_by(Sampling, BOT, Wells, rep) %>%
+  do(gompertz_fit = try(nls( OD700 ~ K * exp( -exp((( r * exp( 1)) / K) * (l - dhour) + 1)),
+                        data = .,
+                        start = list(K = 2, l = 30, r = 0.1)),
+                        silent = T))
+```
+
+only `r nrow(filter(fitDF, class(gompertz_fit) == "nls"))` wells out of 
+`r nrow(fitDF)` could be fitted in the first attempt. We will save the fitted samples and try to fit the remaining
+samples with the brute-force algorithm of nls2. we will use the estimate starting parameters from the fitted curves as starting values
+
+
+```{r}
+EcoL_fit_1 <- filter(fitDF, class(gompertz_fit) == "nls") %>% tidy(., gompertz_fit)
+
+EcoL_nofit_1 <- filter(fitDF, class(gompertz_fit) == "try-error") %>% 
+  select(-gompertz_fit) %>%
+  left_join(.,EcoL0.2)
+
+Start.df <- group_by(EcoL_fit_1, term) %>%
+  summarize(min = quantile(estimate, 0.2),
+            max = quantile(estimate, 0.8)) %>% 
+  melt() %>%
+  dcast(variable~term) %>%
+  select(-variable)
+
+fitDF2 <- EcoL_nofit_1 %>%
+  group_by(Sampling, BOT, Wells, rep) %>%
+  do(gompertz_fit = try(nls2( OD700 ~ K * exp( -exp((( r * exp( 1)) / K) * (l - dhour) + 1)),
+                        data = .,
+                        start = Start.df,
+                        algorithm = "brute-force"),
+                        silent = T))
+
+
+
+nrow(filter(fitDF2, class(gompertz_fit) != "nls"))
+
+EcoL_fit_2 <- tidy(fitDF2, gompertz_fit)
+
+```
+
+with some gentle force we were able to fit a function for **all** samples. Great!
+Now we join the parameter estimates from the first and the second round of fitting. 
+
+We also throw out the parameter estimates for `K` and `l` as we are only interested in `r`
+
+```{r}
+EcoL_fit <- rbind( ungroup( EcoL_fit_1),
+                   ungroup( EcoL_fit_2)) %>%
+  filter(term == "r")
+```
+
+now we need to bring the uptake rate data (`r`) together with the wells that we score as *positive*
+
+according to our definition **we score those wells as positive, where the median maximum OD among the replicates is ≥ 0.2**. 
+This is equivalent to 2 out of 3 replicates reaching an OD ≥ 0.2. 
+
+so we go back to the full dataset and 
+
++ compute the maximum OD 
++ calculate the median maximum OD
++ filter out all Wells with a medium max OD < 0.2
++ join the uptake rates to the remaining Wells
++ calculate the median uptake rate among the remaining (at least 2) replicates
+
+```{r}
+# get wells that we define as "positive"
+EcoL_pos <- group_by(EcoL, Sampling, BOT, Wells, rep) %>%
+  summarize(maxOD = max(OD700)) %>%
+  summarize(med_max_OD = median( maxOD)) %>%
+  filter(med_max_OD >= 0.2)
+
+# subset wells for maxOD ≥ 0.2 again, keep wells that we scored as positive (= exclude wells that have a single replicate with max_OD ≥ 0.2)
+# join modelled uptake rate
+
+
+group_by(EcoL, Sampling, BOT, Wells, rep) %>%
+  summarize(maxOD = max(OD700)) %>%
+  filter(maxOD >= 0.2) %>%
+  left_join(EcoL_pos, .) %>%
+  left_join(EcoL_fit) %>%
+  filter(estimate < 0) %>%
+  left_join(., EcoL) %>% 
+  ggplot(aes(x = dhour, y = OD700))+
+  geom_point()+
+  facet_wrap(~Sampling * BOT * Wells)
+  
+  
+  
+  ggplot( aes(x=p.value))+
+  geom_histogram(binwidth = 0.01)+
+  geom_vline(aes(xintercept = 0.05), col="red", linetype = "dashed")
+  
+
+  
+  
+
+  
+
+  
+  
+summarize(a = n()) %>%
+  ggplot( aes(x = a))+
+  geom_histogram()
+
+```
+
+
+
+
+
+
+
+
+
+```{r, comment=FALSE}
+EcoL %>%
+  group_by(BOT,Sampling,Wells)%>%
+summarize(maxOD = max(OD700))%>%
+  ggplot(aes(x=maxOD))+
+ geom_histogram()+
+ facet_wrap(~Wells*Sampling)
+
+```
+
+
+
+
+
+
+
+
+
+next, for each well, for each reading, we take the median (blanked) OD from the three replicates.
+
+```{r}
+EcoL <- group_by(EcoL, Sampling, BOT, Wells, Timepoint, dhour) %>%
+  summarize(OD700 = median(OD700))
+```
+
+let's look at the distribution of the OD readings
+
+```{r, echo=FALSE, fig.width=3.5, warning=FALSE}
+ggplot(EcoL, aes(x = OD700))+
+  geom_histogram(binwidth = 0.01)+
+  labs(title = "histogram of all reads")+
+  theme_bw()
+  
+
+filter(EcoL, OD700 > 0.2) %>%
+  
+  ggplot( aes(x = OD700))+
+  geom_histogram(binwidth = 0.01)+
+  labs( title = "historgram of reads with OD > 0.2")+
+  theme_bw()
+
+```
+
+
 
