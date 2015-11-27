@@ -1,0 +1,218 @@
+---
+title: "Analysis of OTU Data"
+author: "Fabian Roger"
+date: "27 Nov 2015"
+output:
+  html_document:
+    fig_caption: yes
+    toc: yes
+  pdf_document:
+    latex_engine: lualatex
+    toc: yes
+---
+
+In this script we import the OTU table, the taxonomic annotation and the phylogenetic tree to 
+
++ calculate bacterial diveristy
++ produce a heatmap of the abundant OTUs
+
+we read in the relevant files
+```{r}
+OTU <- read.table("OTU_docs/OTU_clean.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+TAX <- read.table("OTU_docs/TAX_clean.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+TREE <- read.tree("OTU_docs/OTU97_um.tre")
+ID <- read.table("ID.txt")
+```
+
+### seqeuncing depth 
+
+let's look at the seqeuncing depth of the OTU data
+
+```{r, fig.width=5, echo=FALSE}
+OTU[, -1] %>% colSums %>% sort(., decreasing = T) %>% plot
+OTU[, -1] %>% colSums %>% hist(.,breaks = function(x) seq(0, max(x)+1000, 1000), main = "sequencing depth\nbinwidth = 1000")
+OTU[, -1] %>% colSums %>% summary
+```
+
+We can see that the sequencing depth is quite varible and some samples have very low coverage. 
+
+```{r}
+colSums(OTU[,-1])[which(colSums(OTU[,-1]) < 1000)]
+ID[ID$gbgID %in% names(which(colSums(OTU[,-1]) < 1000)), ]
+
+```
+
+The two samples with the lowest coverage (see above) have below <1000 reads per sample. Both samples are from the first sampling day and represent a sterile control and one lowest dilution respectively. especially `gbg12` has only 24 reads and needs to be excluded. 
+
+### sensitivity of diveristy estimation to sequencing depth
+
+For the remaining dataset, we want to test wheather the diveristy estimate is sensitve to the sampling depth to sea whether we need to exclude more samples. Below, we rarefied the dataset to following depth `r seq(1e3,1e4,2e3)`, calculated the effective number of species and correlated the results.
+
+We calculate the effective number of species of order 1, corresponding to the exponential of the Shannon entropy. For this test we don't apply any bias correction.
+
+
+```{r, include=FALSE}
+
+rownames(OTU) <- OTU$OTU.ID
+OTU <- OTU[,-1]
+
+DIV.res <- vector("list")
+
+DivSeq <- seq(1e3,1e4,3e3)
+
+for (i in 1:4) {
+  R <- DivSeq[i]
+  OTU_t <- rrarefy(t(OTU[, colSums(OTU) >= R]), R)
+  MC <- MetaCommunity(t(OTU_t))
+  DIV.res[[i]] <- AlphaDiversity(MC, Correction = "None")$Communities  %>% 
+    data.frame( DIV = .) %>% 
+    add_rownames( var = "gbgID")
+  colnames(DIV.res[[i]]) <- c("gbgID", paste("DIV", R, sep = "_"))
+  
+}
+
+
+MC <- MetaCommunity(OTU)
+
+DIV.res[[5]] <- AlphaDiversity(MC, Correction = "None")$Communities  %>% 
+    data.frame( DIV = .) %>% 
+    add_rownames( var = "gbgID")
+  colnames(DIV.res[[5]]) <- c("gbgID", "DIV_full")
+  
+DIV.res[[6]] <- AlphaDiversity(MC, Correction = "Best")$Communities  %>% 
+    data.frame( DIV = .) %>% 
+    add_rownames( var = "gbgID")
+  colnames(DIV.res[[6]]) <- c("gbgID", "DIV_full_with_Corr")
+
+DIV <- (Reduce(function(...) merge(..., all=T), DIV.res))
+
+
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
+{
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y, use = "pairwise.complete.obs", method = "pearson"))
+    txt <- format(c(r, 0.123456789), digits = 3)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+```
+```{r, echo=FALSE}
+pairs(DIV[,-1], lower.panel = panel.smooth, upper.panel = panel.cor)
+```
+
+
+We can see that the effective number of species is very unsensitive to sequnecing depth and that the results are virtually identical irrespective of the rarefaction level or wheather we use the full dataset, with or without correction. The only exception is that the correction estimates high diveristy for the sample `gbg12`that has only 12 reads. With such low reads, no diveristy estimate can be trusted, wherefore we exclude the read.  
+
+It is however unecesary to exclude any other sample than `gbg12`. 
+
+In an attempt to reduce a possibel sampling bias but without unessecarily discarding data, we choose the following approach:
+
++ all samples with more than 10000 reads (`r length(which(colSums(OTU) >= 10000))` samples) are rarefied to 10000 reads.
+
++ all samples with below 10000 reads (`r length(which(colSums(OTU) < 10000))` samples) are kept as is. 
+
++ no correction is applied as until now it is not clear if correction are accurate for sequencing data (that may contain biased estimates of singletons and doubletons as singletons have been excluded and doubletons may also represent spourious OTUs)
+
++ the above mentioned rules are applied to both estimates, with and without the incorporation of phylogenetic diveristy
+
+### effective number of species
+
+```{r}
+
+# wraper function for vegan::rrarefy to rarefy only samples with sequencing depth > S
+# assumes samples as columns
+
+rarS <- function(x, S) {
+  xR <- rrarefy( t( x[ , colSums( x) > S]), S)
+  xR <- t(xR)
+  x[, match(colnames(xR), colnames(x))] <- xR
+  return(x)
+}
+
+MC <- OTU %>% 
+  select( -gbg12) %>%
+  rarS( S = 10000) %>% 
+  MetaCommunity()
+
+DIV <- AlphaDiversity(MC, q = 1, Correction="None")$Communities %>%
+  data.frame( effN = .) %>% 
+  add_rownames( var = "gbgID") %>% 
+  left_join(ID, .)
+```
+
+let's have a look at the calculated diversity levels
+
+```{r, echo = FALSE}
+
+ggplot(DIV, aes(x = DIL, y = effN, colour = Lake, group = Lake))+
+  geom_point()+
+  stat_smooth(method = "lm", se = F)+
+  facet_wrap(~Sampling * Lake)+
+  scale_y_log10(breaks = c(2,4,8,16,32))+
+  scale_colour_manual(values = c("orange", "darkred", "darkgreen", "darkblue"  ))+
+  theme_bw()+
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = -90, hjust = 0, vjust = 0.5))+
+  labs( x = "Dillution factor", y= "alpha diversity (q = 1)", title = "effective number of species")
+```
+ 
+ 
+ compare with old diversity estimate
+```{r}
+DIVold <- read.table("~/Documents/01_PhD/01_Research/02_rare_Biosphere/R scripts/Diversity_5000_100p.txt")
+
+DIVold <- left_join(DIVold, DIV)
+
+ggplot(DIVold, aes(x = Hill1, y = effN, colour = Lake, group = Lake))+
+  geom_point()+
+  stat_smooth(method = "lm", se = F)+
+  facet_wrap(~Sampling * Lake)+
+  scale_colour_manual(values = c("orange", "darkred", "darkgreen", "darkblue"  ))+
+  theme_bw()
+
+```
+
+### phylogenetic diveristy
+
+```{r}
+
+DIV <- AlphaDiversity(MC, q = 1, Tree = TREE, Correction="None")$Communities %>%
+  data.frame( PD = .) %>% 
+  add_rownames( var = "gbgID") %>% 
+  left_join(DIV, .)
+
+```
+
+```{r, echo = FALSE}
+
+ggplot(DIV, aes(x = DIL, y = PD, colour = Lake, group = Lake))+
+  geom_point()+
+  stat_smooth(method = "lm", se = F)+
+  facet_wrap(~Sampling * Lake)+
+  scale_y_log10(breaks = c(2,4,8,16,32))+
+  scale_colour_manual(values = c("orange", "darkred", "darkgreen", "darkblue"  ))+
+  theme_bw()+
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = -90, hjust = 0, vjust = 0.5))+
+  labs( x = "Dillution factor", y= "phylogenetic diversity (q = 1)", title = "effective number of species completely distinct species")
+```
+ 
+compare with old diversity estimate
+```{r}
+PDold <- read.table("~/Documents/01_PhD/01_Research/02_rare_Biosphere/R scripts/PhyloDiv.txt")
+
+PDold <- left_join(PDold, DIV, by = "gbgID")
+
+ggplot(PDold, aes(x = PSEs, y = PD.y, colour = Lake, group = Lake))+
+  geom_point()+
+  stat_smooth(method = "lm", se = F)+
+  facet_wrap(~Sampling * Lake)+
+  scale_colour_manual(values = c("orange", "darkred", "darkgreen", "darkblue"  ))+
+  theme_bw()
+
+```
+
+
+
