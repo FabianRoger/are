@@ -1,4 +1,6 @@
 
+#### Bac Count 2nd Gating.R seems to be the right template script. 
+#### check other scripts and if confirmed take scripte above and clean it
 
 # FLOW CYTOMETER COUNTS i.e. CELL NUMBERS #
 
