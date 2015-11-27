@@ -32,6 +32,7 @@ first, we import the data and have a look at it
 ```{r}
 EcoL <- read.table("EcoLogDocs/Ecolog.txt", stringsAsFactors = F)
 head(EcoL)
+EcoL$Sampling <- as.character(EcoL$Sampling)
 unique(EcoL$Sampling)
 unique(EcoL$rep)
 unique(EcoL$Date)
@@ -89,7 +90,7 @@ let's look at this information to see when the plates have been read and how lon
 
 ```{r, warning=FALSE, echo=FALSE}
 select(EcoL, Sampling, BOT, hour, dhour) %>%
-  mutate(Sampling = as.factor(Sampling), dhour = as.numeric(dhour)) %>%
+  mutate(Sampling = factor(Sampling, levels = c("14.06", "28.06", "12.07")), dhour = as.numeric(dhour)) %>%
   distinct() %>%
   
   ggplot(aes(x = dhour, y = Sampling, colour = Sampling))+ 
@@ -146,7 +147,7 @@ EcoL$OD700 <- EcoL$OD700 - EcoL$medium_OD700
 let's look at how a plate looks:
 
 ```{r, echo=FALSE}
-EcoL %>% filter(BOT == 5, Sampling == 28.06) %>%
+EcoL %>% filter(BOT == 5, Sampling == "28.06") %>%
   
   ggplot( aes( x = as.numeric(dhour), y = OD700, colour = Wells))+
   geom_point()+
@@ -245,15 +246,16 @@ However, we also have to check the quality of the paramter estimates:
 ```{r, fig.width=6, fig.height=6, warning=FALSE}
 
 ggplot(EcoL_fit, aes(x= estimate))+
-  geom_histogram(binwidth = 0.1)+
+  geom_histogram(binwidth = 0.2)+
   theme_bw()+
-  labs(title = "histogramm of all paramter estimates")
+  scale_y_sqrt()+
+  labs(title = "histogramm of all paramter estimates, bin = 0.2, counts are sqrt-transformed")
 
 ggplot(EcoL_fit, aes(x= estimate))+
   geom_histogram(binwidth = 0.01)+
   geom_histogram(data = filter(EcoL_fit, p.value <= 0.001), aes(x = estimate), binwidth = 0.01, fill = "red", alpha = 0.4)+
   theme_bw()+
-  labs(title = "histogramm of all estimates falling in the interval -0.01 ≤ r ≤ 0.5 (black) and \nsignificant parameter estimates at p ≤ 0.001 (red)")+
+  labs(title = "histogramm of all estimates falling in the interval -0.01 ≤ r ≤ 0.5 (black) and \nsignificant parameter estimates at p ≤ 0.001 (red)\nbin = 0.01, untransformed counts")+
   scale_x_continuous(limits = c(-0.01,0.5))
 ```
 
@@ -299,7 +301,7 @@ EcoL_r <- group_by(EcoL, Sampling, BOT, Wells, rep) %>%
   left_join(EcoL_fit) %>% # join parameter estimate and exclude Wells that couldn't be estimated
   group_by(Sampling, BOT, Wells) %>% 
   summarize(estimate = median(estimate)) %>% # take median uptake rate of the (at least 2) replicates 
-  filter(estimate > 0) %>% # instead of replace ODmax < 0 with 0, we exclude them. A carbon source with 0 uptake rate will not be counted as positive
+  filter(estimate > 0) %>% # instead of replacing ODmax < 0 with 0, we exclude them. A carbon source with 0 uptake rate will not be counted as positive
   mutate(estimate = replace(estimate, estimate > MaxR$r, MaxR$r)) # truncate all estimates > MaxR at MaxR
 
 ```
@@ -325,14 +327,75 @@ EcoL_Func_M <-
 rownames(EcoL_Func_M) <- RowNames
 ```
 
-```{r}
-diversity(EcoL_Func_M) %>% 
-  exp() %>%
-  as.data.frame() %>% 
-  rename(. ,)
-  inner_join(.,EcoL_Func)
+Let's take the chance to look at the utilization pattern on the EcoLog plates. 
 
+```{r, echo = FALSE, fig.width = 14, fig.height = 8}
+ID <- read.table("ID.txt", colClasses = c("character")) %>%
+  mutate( BOT = as.integer(BOT)) %>% 
+  arrange( Sampling, Lake, DIL) %>% 
+  mutate(bot_label = paste(Lake, DIL, sep = " "))
+
+rownames(ID) <- paste(ID$Sampling, ID$BOT, sep="_")
+
+WellID <- read.table("EcoLogDocs/Ecolog_Wells.txt", header=T, stringsAsFactors = FALSE) %>% 
+  arrange( compound_class) %>% 
+  mutate(Well_label = paste(Substrate, compound_class, sep = " | "))
+
+rownames(WellID) <- WellID$Wells
+
+Ecolog_phylo <- phyloseq(otu_table(EcoL_Func_M, taxa_are_rows = FALSE),
+                         sample_data(ID),
+                         tax_table(as.matrix(WellID)))
+
+sample_data(Ecolog_phylo)$Sampling <- factor(sample_data(Ecolog_phylo)$Sampling, levels = c("14.06", "28.06", "12.07"))
+
+plot_heatmap(Ecolog_phylo,
+             sample.label = "bot_label",
+             sample.order = rownames(ID),
+             taxa.label = "Well_label",
+             taxa.order = rownames(WellID))+
+  theme_bw(base_size = 11)+
+  theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust = 0.5),
+        legend.position = "bottom")+
+    facet_wrap( ~ Sampling, scales = "free_x", ncol = 3)
+  
 ```
+
+
+now we caclulate functional diveristy of the samples.For that we will consider each carbon source as trait and the uptake rate as trait value. However, as we don't have neither information about which species have which traits we cannot compute trait diveristy as it is usually done. 
+
+We choose another approach which is equivalent to the way we calculate species richness, i.e. the effective number of traits in the community. 
+For that we will calculate the Shannon entropy of traits in each sample, taking the uptake rate as "relative abundance". We eill then connvert the entropy to an effective number. 
+
+In our case the minimum value is 0 (no carbon source is metabolized) and the maximum value is 31 (all carbon sources are matabolized evenly)
+
+```{r}
+FunDiv <- diversity(EcoL_Func_M) %>% 
+  exp() %>%
+  data.frame(FuncDiv = .) %>% 
+  add_rownames(var = "ID") %>% 
+  mutate(Sampling = substr(ID, 1,5)) %>% 
+  mutate(BOT = as.integer(sub(".+_(\\d+)", "\\1", ID))) %>%
+  left_join(., ID) %>% 
+  mutate(Sampling = factor(Sampling, levels = c("14.06", "28.06", "12.07")))
+
+write.table(FunDiv, "EcoLogDocs/FunDiv.txt", sep = "\t")
+``` 
+
+Finally, let's also have a quick look at the Functional diversity values that we calculated, by Lake and Sampling 
+
+```{r, echo = FALSE}
+  ggplot(FunDiv, aes(x = DIL, y = FuncDiv, colour = Lake, shape = Lake))+
+    geom_point()+
+    facet_wrap(Sampling~Lake)+
+    theme_bw()+
+    theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust = 0.5),
+        legend.position = "none")+
+    scale_colour_manual(values = c("orange", "darkred", "darkgreen", "darkblue"  ))+
+    labs( y = "effective number of traits", x = "dilution factor", title = "functional diversity")
+  
+```
+
 
 
 
