@@ -82,7 +82,7 @@ FunDiv <- read.table("EcoLogDocs/FunDiv.txt", header = TRUE, sep = "\t", strings
 
 we can join the functional diveristy data to the rest and plot them, both against dilution and against each other
 
-```{r, echo=FALSE, warning=FALSE}
+```{r, echo=FALSE}
 DIV <- na.omit(DIV) %>% 
   left_join( FunDiv) %>% 
   transform(Sampling = factor(Sampling, levels = c("14.06", "28.06", "12.07")))
@@ -152,7 +152,7 @@ For each diveristy metric, we have three measurements, taken at three timepoints
 
 Therefore we have to take the average diveristy as predictor variable. In the graph below we show the value of each diverist metric plot together for the three sampling dates (coloured dots) and the average diversity (black dots)
 
-```{r, echo = FALSE, warning = FALSE}
+```{r, echo = FALSE}
 G1 <- DIV %>% 
   gather(DIVmetric, DIVvalue, effN, PD, FuncDiv) %>%
   group_by(BOT, Lake, DIL, DIVmetric) %>% 
@@ -203,7 +203,7 @@ head(BEF,2)
 
 To see the correlations between the three metrics of EF and the three diverist metrics, we correlate them 
 
-```{r, echo = FALSE, warning=FALSE}
+```{r, echo = FALSE}
 
 BEF_long <- BEF %>%  # gather diveristy metrics in one colum, keep EF separate
   ungroup %>% 
@@ -338,7 +338,7 @@ G4
 G5
   
 pdf("figures/Figure_3.pdf", height = 10, width = 10)
-grid.arrange(G2, G3, G4, G5, ncol = 2)
+grid.arrange(G2, G3, G4, G5, ncol = 2, top = "Pearson correlation")
 dev.off()
 #ggsave(plot = Div_G, "figures/Figure_3.pdf", height = 10, width = 10)
 
@@ -349,7 +349,7 @@ It is visible from the scatterplots that there doesn't seem to be a strong corre
 the statics that we present in the plots are linear correlations of the form Ecosystem Function ~ Diversity Metric. As assumption of normality are however not necessarily met, we present aslo the rank correlations:
 
 
-```{r}
+```{r, echo = FALSE}
 
 LM_rank <- BEF_long2 %>%
   group_by(Lake, DIVmetric, EFmetric) %>% 
@@ -449,7 +449,7 @@ G8
 G9
   
 pdf("figures/Figure_S_2.pdf", height = 10, width = 10)
-grid.arrange(G6, G7, G8, G9, ncol = 2)
+grid.arrange(G6, G7, G8, G9, ncol = 2, top = "Spearman rank correlation")
 dev.off()
 
 
