@@ -287,8 +287,21 @@ nex with proceed with construction of a phylogenetic tree. before the constructi
 # make_phylogeny.py -i pynast_aligned/numbered_OTU_aligned_pfiltered.fasta -r midpoint -o OTU97.tre
 ```
 
+as we need an ultrametric tree to estimate phylogentic diveristy we need to make the tree ultrametric. We will use pathd8 to achieve this
 
+```{sh}
+# OTU_docs/PATHd8/PATHd8 OTU_docs/OTU97.tre OTU_docs/OTU97_um.tre
 
+```
 
+PATH8 produces a big file with lots of additional information that is not very reelvant in our case.
+We canuse `ape::read.tree` to extarct the tree from the file and write it back as pure tree file. We can also use the opportunity to strip the additional `'` from the tree labels.
+
+```{r}
+TREE <- read.tree("OTU_docs/OTU97_um.tre")[[1]]
+TREE$tip.label <- sub("'(\\w+)'", "\\1", TREE$tip.label)
+write.tree(TREE, "OTU_docs/OTU97_um.tre")
+
+```
 
 
