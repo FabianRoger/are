@@ -14,6 +14,45 @@ output:
 In this script I import and clean the data from the 
 Carbon Source Utilization Profiling using the BIOLOG™ Ecoplates
 
+
+
+__this script imports:__ 
+
++ EcoLogDocs/Ecolog.txt         # raw OD readings for all samples from Biolog EcoPlate
++ ID.txt                        # sample metadata
++ EcoLogDocs/Ecolog_Wells.txt   # metadata for wells on biolog plates
+   
+__this script does:__
+
+  + quality control 
+  + bias correction
+  + calculates functional diveristy based on Biolog EcoPlates
+  
+__this script exports:__
+  
+  dataframes:
+  
+  + EcoLogDocs/FunDiv.txt       # functional diversity based on Biolog EcoPlates
+  
+  
+```{r, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message=FALSE)
+```
+
+```{r, echo = FALSE}
+require(ggplot2)
+require(dplyr)
+require(broom)
+require(minpack.lm)
+require(magrittr)
+require(tidyr)
+require(phyloseq)
+require(vegan)
+
+```
+
+
+
 The plates have the following layout:
 ![](EcoLogDocs/Ecoplate.jpg)   
 
@@ -319,9 +358,9 @@ EcoL_Func <- EcoL %>%
   mutate(estimate = replace(estimate, is.na(estimate), 0)) 
   
 EcoL_Func_M <- 
-  dcast(EcoL_Func, ID ~ Wells, value.var = "estimate") %T>%
-  {assign("RowNames", .$ID, pos = ".GlobalEnv" )} %>%  # we stire the rownames seperately to be sure to not mix up our sample names
-  select( -ID) %>% 
+  spread(EcoL_Func, Wells, estimate) %T>%
+  {assign("RowNames", .$ID, pos = ".GlobalEnv" )} %>%  # we store the rownames seperately to be sure to not mix up our sample names
+  select( -ID, -Sampling, -BOT) %>% 
   as.matrix()
 
 rownames(EcoL_Func_M) <- RowNames
@@ -349,7 +388,7 @@ Ecolog_phylo <- phyloseq(otu_table(EcoL_Func_M, taxa_are_rows = FALSE),
 
 sample_data(Ecolog_phylo)$Sampling <- factor(sample_data(Ecolog_phylo)$Sampling, levels = c("14.06", "28.06", "12.07"))
 
-plot_heatmap(Ecolog_phylo,
+C_heat <- plot_heatmap(Ecolog_phylo,
              sample.label = "bot_label",
              sample.order = rownames(ID),
              taxa.label = "Well_label",
@@ -357,7 +396,10 @@ plot_heatmap(Ecolog_phylo,
   theme_bw(base_size = 11)+
   theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust = 0.5),
         legend.position = "bottom")+
-    facet_wrap( ~ Sampling, scales = "free_x", ncol = 3)
+    facet_wrap( ~ Sampling, scales = "free_x", ncol = 3)+
+  ggtitle("carbon source utilization pattern")
+
+ggsave("figures/Fig_maybe_1.pdf", C_heat, height = 8, width = 16)
   
 ```
 
@@ -378,9 +420,17 @@ FunDiv <- diversity(EcoL_Func_M) %>%
   mutate(BOT = as.integer(sub(".+_(\\d+)", "\\1", ID))) %>%
   left_join(., ID) %>% 
   mutate(Sampling = factor(Sampling, levels = c("14.06", "28.06", "12.07")))
+``` 
+
+we clean the dataframe and export the Functional diveristy data
+
+```{r}
+FunDiv <- select(FunDiv, Sampling, BOT, Lake, DIL, FuncDiv)
 
 write.table(FunDiv, "EcoLogDocs/FunDiv.txt", sep = "\t")
-``` 
+
+```
+
 
 Finally, let's also have a quick look at the Functional diversity values that we calculated, by Lake and Sampling 
 
