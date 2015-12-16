@@ -24,6 +24,13 @@ This pipeline includes:
 
 The joined and quality filtered files produced by this pipeline are in the `OTU_docs/quality_reads directory`
 
+```{r, include = FALSE}
+require(dplyr)
+require(tidyr)
+require(ggplot2)
+require(ape)
+```
+
 ```{sh}
 ls OTU_docs/quality_reads
 ```
@@ -35,6 +42,13 @@ cat OTU_docs/quality_reads/pool1_reads.fasta OTU_docs/quality_reads/pool2_reads.
 ```
 
 next we dereplicate the reads. This means, that all identical reads will be merged and a size annotation will be added to the header, saying how many reads of a given read were found. 
+
+from here on we will do the majority of the analysis in usearch
+
+```{sh}
+usearch
+```
+
 
 as Usearch uses progress bars to track progress, I will redirect the output into an `output.tmp` file from which I can only print the last lines containing the summery statistic of the completed process
 
@@ -67,7 +81,7 @@ tail -n5 output.tmp
 
 no we cluster the remaining sequences with an OTU radius of 3%. Robert Edgar discusses this [here](http://drive5.com/usearch/manual/cmd_cluster_otus.html). Note that this is not necessarily equivalent to the 97% identity clustering of other pipelines. As 3% is the difference form the **centroid** sequence, some people argue that 1.5% radius would be the equivalent (3% maximum difference). For this analyses however, we keep the clustering at 3%
 
-> The -otu_radius_pct option specifies the OTU "radius" as a percentage, i.e. the maximum difference between an OTU member >sequence and the representative sequence of that OTU. Default is 3.0, corresponding to a minimum identity of 97%. 
+> The -otu\_radius_pct option specifies the OTU "radius" as a percentage, i.e. the maximum difference between an OTU member >sequence and the representative sequence of that OTU. Default is 3.0, corresponding to a minimum identity of 97%. 
 
 ```{sh, results="hide"}
 usearch -cluster_otus OTU_docs/seqs_sorted.fasta -otus OTU_docs/otus.fasta -otu_radius_pct 3 2> output.tmp
@@ -110,7 +124,7 @@ sed -ibak $'s/\x0D/\\\n/g' output.tmp
 tail -n5 output.tmp
 ```
 ```{sh, results="hide"}
-usearch -utax OTU_docs/numbered_OTU.fasta -db OTU_docs/reference_files/refdb.udb -fastaout OTU_docs/numbered_OTU_wTax.fasta -strand both 2> output.tmp
+usearch -utax OTU_docs/numbered_OTU.fasta -db OTU_docs/reference_files/refdb.udb -fastaout OTU_docs/numbered_OTU_wTax.fasta -utaxalnout OTU_docs/TAX_alignment -strand both 2> output.tmp
 ```
 ```{sh, echo=FALSE}
 sed -ibak $'s/\x0D/\\\n/g' output.tmp
@@ -119,7 +133,7 @@ tail -n5 output.tmp
 
 now, we map all the reads back to the OTUs. All the reads that came out from the quality control are in the file **qiime_merged.fasta**, we take this reads an attempt to assign all of them to the OTUs that we just constructed an which are stored in the file **numbered_OTU.fasta**
 
-However, the `-usearch_global` command doesn't take `_` as a seperator. Therefore we remove all numbers after the read label so that the header starts with the correct read label and is delimited by a `.`. 
+However, the `-usearch_global` command doesn't take `_` as a separator. Therefore we remove all numbers after the read label so that the header starts with the correct read label and is delimited by a `.`. 
 ```{sh}
 head -n 2 OTU_docs/qiime_merged.fasta
 
@@ -147,12 +161,12 @@ sed -e 's/#OTU/OTU/' OTU_docs/OTU_97.txt > OTU_docs/OTU_97.txt.tmp && mv OTU_doc
 now we import the OTU table into R
 
 ```{r}
-OTU <- read.table("OTU_docs/OTU_97.txt", sep = "\t", header = T)
+OTU <- read.table("OTU_docs/OTU_97.txt", sep = "\t", header = T, stringsAsFactor = F)
 ```
 
-`utax` attaches the taxonomy as one `$taxonomy`colum at the end of the OTU table. The taxa are comma separated and the probablity of the correctness of the assignment is given in brackets. R:Edgar recomends to use a treshold of 0.9 to trust the assignment. 
+`utax` attaches the taxonomy as one `$taxonomy`column at the end of the OTU table. The taxa are comma separated and the probability of the correctness of the assignment is given in brackets. R:Edgar recommends to use a threshold of 0.9 to trust the assignment. 
 
-We will take out the taxonomy from the OTU table and create a new `TAX` table with the taxonomic assignemnt of each OTU
+We will take out the taxonomy from the OTU table and create a new `TAX` table with the taxonomic assignment of each OTU
 
 ```{r}
 # example
@@ -163,7 +177,7 @@ OTU$taxonomy[1]
 # function to convert the taxonomy column into TAX table.
 # assumes an OTU_table as created by the -otutabout option of the -usearch_global command
 
-utax2tax <- function(x, OTU.ID = "OTU.ID", TAX = "taxonomy", threshold = 0.9) {
+utax2tax <- function(x, OTU.ID = "OTU.ID", TAX = "taxonomy") {
   # x : the otu table
   # OTU_ID: quoted colname that contains the OTUID
   # TAX: quoted colname that contains the taxonomic assignments 
@@ -194,34 +208,41 @@ utax2tax <- function(x, OTU.ID = "OTU.ID", TAX = "taxonomy", threshold = 0.9) {
   TAX_long <- do.call("rbind", tax.list_df)
   TAX_long[OTU.ID] <- as.factor( substr( rownames( TAX_long),1, nchar(rownames( TAX_long)) -2 ))
   
-  TAX_long_filtered <- TAX_long[TAX_long$assign.prob > threshold, ]
-  TAX_wide <- dcast(TAX_long_filtered, OTU.ID~tax_order, value.var = "TAX", drop = FALSE)
+  TAX_wide <- select(TAX_long, -assign.prob) %>% 
+    spread(tax_order, TAX)
   TAX_wide <- TAX_wide[, c(OTU.ID, "d", "p", "c", "o", "f", "g")]
   
-  return( list(TAX_long = TAX_long, TAX_wide = TAX_wide))
-  
+  return( list(TAX_long = TAX_long,
+               TAX_wide = TAX_wide)) 
 }
 
 ```
+
 ```{r}
-TAX.list <- utax2tax(OTU, threshold = 0.9)
+TAX.list <- utax2tax(OTU)
 
 TAX_long <- TAX.list$TAX_long
 TAX_wide <- TAX.list$TAX_wide
 
+
 OTU <- select(OTU, -taxonomy)
 ```
 
-Let's look at some summary statistics of the OTU table
+Both data frames (`TAX_long` & `TAX_wide`) still contain all OTUs. Now, we want to take out all OTUs that are likely to be Chloroplasts or Mitochondria which could have passed the filters. For that we will filter out all OTUs that
 
-+ how many OTU's could not be assigned to the domain `Bacteria` 
-+ how many OTU's are classified as `Archaea`
-+ how many OTU's are classified as `Chloroplast`
++ for which the best `class` assignment is `"Chloroplast"`
++ for  which the best `order` assignment is `"Rickettsiales"` (that's how Mitochondria Sequences are classified in the RDP database)
+
+we will also exclude all `"Archaea"` sequences as our primers were not designed to capture `"Archaea"` 
+
+Finaly we exclude all OTUs that don't have at least a 50% likelyhood to belong to `"Bacteria"`
 
 ```{r}
+
 data.frame(OTU.ID = OTU$OTU.ID, OTUabund = rowSums(OTU[, -1])) %>% 
   left_join(TAX_wide, .) %>% 
-  mutate(d = replace(d, c == "Chloroplast", "Chloroplast")) %>%  
+  mutate(d = replace(d, c == "Chloroplast", "Chloroplast")) %>% 
+  mutate(d = replace(d, o == "Rickettsiales", "Rickettsiales")) %>%
   group_by(d) %>% 
   summarise(OTUabund = sum(OTUabund), n_OTUs = n()) %>% 
   ggplot( aes( x = d, y = OTUabund, fill = d))+
@@ -231,16 +252,31 @@ data.frame(OTU.ID = OTU$OTU.ID, OTUabund = rowSums(OTU[, -1])) %>%
   labs(title = "number of reads in the OTUs ")+
   theme_bw()
 
+BAC <- filter(TAX_long, tax_order == "d", TAX == "Bacteria")$OTU.ID 
+BAC_bad <- filter(TAX_long, tax_order == "d", TAX == "Bacteria", assign.prob < 0.5)$OTU.ID 
+
+data.frame(OTU.ID = as.character(BAC), OTUabund = rowSums(OTU[OTU$OTU.ID %in% BAC, -1])) %>% 
+  mutate(GB = "GOOD") %>% 
+  mutate(GB = replace(GB, OTU.ID %in% BAC_bad, "BAD")) %>%
+  group_by(GB) %>% 
+  summarise(OTUabund = sum(OTUabund), n_OTUs = n()) %>%
+   ggplot( aes( x = GB, y = OTUabund, fill = GB))+
+  geom_bar(stat = "identity")+
+  geom_text(aes(y = OTUabund + 1e5, label = paste(OTUabund, "reads")), size = 4) +
+  geom_text(aes(y = OTUabund + 2e5, label = paste( n_OTUs, "OTUs")), size = 4) +
+  labs(title = "number of reads in the OTUs ")+
+  theme_bw()
 
 ```
-
 
 for further analysis we will only keep the OTUs that have been assigned to the domain `Bacteria`
 We clean the `OTU` table and the `TAX_wide` table of all other OTUs and export them. We also export a file containing all OTU's that are assigned as `Bacteria` .
 
 ```{r}
 TAX_wide %>% 
-  mutate(d = replace(d, c == "Chloroplast", "Chloroplast")) %>% 
+  mutate(d = replace(d, c == "Chloroplast", "Chloroplast")) %>%
+  mutate(d = replace(d, o == "Rickettsiales", "Rickettsiales")) %>% 
+  filter(! OTU.ID %in% BAC_bad) %>% 
   filter( d == "Bacteria") %T>% 
   {assign("BAC_OTUs", .$OTU.ID, pos = ".GlobalEnv" )} %>% 
   write.table(., file = "OTU_docs/TAX_clean.txt", sep = "\t")
@@ -252,56 +288,87 @@ OTU %>%
 BAC_OTUs %>% as.character %>% cat(., file = "OTU_docs/BAC_OTUs.txt", sep ="|")
 ```
 
-to clean the file `numbered_OTU_wTax.fasta`from the seqeunces that we don't want to keep, we move the analysis to Qiime where we can use the python script `filter_fasta.py`. 
+to clean the file `numbered_OTU_wTax.fasta`from the sequences that we don't want to keep, we move the analysis to Qiime where we can use the python script `filter_fasta.py`. 
 
 **the following code is run directly in the console as calling qiime with sytsem() doesn't seem to work**
-I write the exact commands here, but I commnet them out so. 
+The exact commands are included in this document but can't be run as a script. 
 
-```{sh}
+```{sh, eval=FALSE}
 #macqiime
 ```
 
 
-```{sh}
-#grep -E -w -f OTU_docs/BAC_OTUs.txt OTU_docs/numbered_OTU_wTax.fasta > OTU_docs/OTU_BAC.txt
-#sed -ibak -E 's/^>//' OTU_docs/OTU_BAC.txt
-#filter_fasta.py -f OTU_docs/numbered_OTU_wTax.fasta -s OTU_docs/OTU_BAC.txt -o OTU_docs/numbered_OTU_wTax_clean.fasta
-#grep -c -E '^>' OTU_docs/numbered_OTU_wTax_clean.fasta
+```{sh, eval = FALSE}
+grep -E -w -f OTU_docs/BAC_OTUs.txt OTU_docs/numbered_OTU_wTax.fasta > OTU_docs/OTU_BAC.txt
+sed -ibak -E 's/^>//' OTU_docs/OTU_BAC.txt
+filter_fasta.py -f OTU_docs/numbered_OTU_wTax.fasta -s OTU_docs/OTU_BAC.txt -o OTU_docs/numbered_OTU_wTax_clean.fasta
+grep -c -E '^>' OTU_docs/numbered_OTU_wTax_clean.fasta
 ```
 
-nex with proceed with construction of a phylogenetic tree. before the construction of the tree, we strip the phylogenetic information from the seqeunce label (otherwise all sequences are named by their full header). Then, we
+next with proceed with construction of a phylogenetic tree. before the construction of the tree, we strip the phylogenetic information from the sequence label (otherwise all sequences are named by their full header). Then, we
 
-+ align the representative sequences against the greengen full-length 16S database (default in qiime) using the (default) pynas algorithm
++ align the representative sequences against the greengen full-length 16S database (default in qiime) using the (default) pynast algorithm
 + filter 'all gaps' positions
 + build a tree with midpoint rooting and the (default) fasttree algorithm
 
-```{sh}
-# sed -E's/^(>OTU_[0-9]+);.+/\1/' <OTU_docs/numbered_OTU_wTax_clean.fasta> OTU_docs/numbered_OTU.fasta
+```{sh, eval = FALSE}
+sed -E 's/^(>OTU_[0-9]+);.+/\1/' <OTU_docs/numbered_OTU_wTax_clean.fasta> OTU_docs/numbered_OTU.fasta
 
-# cd OTU_docs
+cd OTU_docs
 
-# align_seqs.py -i numbered_OTU.fasta
+align_seqs.py -i numbered_OTU.fasta
 
-# filter_alignment.py -i pynast_aligned/numbered_OTU_aligned.fasta -o pynast_aligned
+filter_alignment.py -i pynast_aligned/numbered_OTU_aligned.fasta -o pynast_aligned
  
-# make_phylogeny.py -i pynast_aligned/numbered_OTU_aligned_pfiltered.fasta -r midpoint -o OTU97.tre
+make_phylogeny.py -i pynast_aligned/numbered_OTU_aligned_pfiltered.fasta -r midpoint -o OTU97.tre
 ```
 
-as we need an ultrametric tree to estimate phylogentic diveristy we need to make the tree ultrametric. We will use pathd8 to achieve this
+as we need an ultrametric tree to estimate phylogenetic diversity we need to make the tree ultrametric. We will use pathd8 to achieve this
 
-```{sh}
-# OTU_docs/PATHd8/PATHd8 OTU_docs/OTU97.tre OTU_docs/OTU97_um.tre
+```{sh, eval = FALSE}
+
+PATHd8/PATHd8 OTU97.tre OTU97_um.tre
 
 ```
 
-PATH8 produces a big file with lots of additional information that is not very reelvant in our case.
-We canuse `ape::read.tree` to extarct the tree from the file and write it back as pure tree file. We can also use the opportunity to strip the additional `'` from the tree labels.
+PATH8 produces a big file with lots of additional information that is not very relevant in our case.
+We can use `ape::read.tree` to extract the tree from the file and write it back as pure tree file. We can also use the opportunity to strip the additional `'` from the tree labels.
 
-```{r}
+```{r, eval = FALSE}
 TREE <- read.tree("OTU_docs/OTU97_um.tre")[[1]]
 TREE$tip.label <- sub("'(\\w+)'", "\\1", TREE$tip.label)
 write.tree(TREE, "OTU_docs/OTU97_um.tre")
 
 ```
 
+
+
+
+
+```{r}
+
+AHH <- function(x) {
+  
+  TFff <- c()
+  for (i in 2 : length(x)){
+   TF <- c(is.na(x[i-1]), is.na(x[i])) 
+   if(identical(TF, c(TRUE, FALSE))) TFff[i-1] <- "AHHHH" else {TFff[i-1] <- "all good"} 
+     }
+  
+  if("AHHHH" %in% TFff) return("AHHHHH") else {return("all good")}
+     
+  
+}
+
+
+
+
+#excluded OTUs
+
+EXCL <- c("OTU_74","OTU_132","OTU_153","OTU_181","OTU_190","OTU_220","OTU_245","OTU_267","OTU_444","OTU_483","OTU_489","OTU_515","OTU_564","OTU_572","OTU_573","OTU_600","OTU_611","OTU_629","OTU_637","OTU_634","OTU_686","OTU_732","OTU_774","OTU_793","OTU_924","OTU_978","OTU_999","OTU_1046","OTU_1055")
+
+TAX_long[TAX_long$OTU.ID %in% EXCL&
+           TAX_long$tax_order == "d",]
+
+```
 
