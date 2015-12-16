@@ -1,5 +1,5 @@
 ---
-title: "Diversity - EF bootstrapped"
+title: "Diversity - Ecosystem functioning correlations"
 author: "Fabian Roger"
 date: "28 Nov 2015"
 output:
@@ -21,17 +21,17 @@ __this script imports:__
    
 __this script does:__
 
-+ joins the diveristy metrics and measured ecosystem functions
-+ calculates the average diveristy 
-+ calcuates multifunctionality
-+ correlates the diveristy metrics with the ecosystem funcitons
-+ coputes r squares and p-values for each correlation
++ joins the diversity metrics and measured ecosystem functions
++ calculates the average diversity 
++ calculates multifunctionality
++ correlates the diversity metrics with the ecosystem functions
++ computes r squares and p-values for each correlation
   
 __this script exports:__
   
 figures:
   
-+ figures/Figure_3.pdf      *biplot of diveristy *
++ figures/Figure_3.pdf      *biplot of diversity *
   
 
 ```{r, include=FALSE}
@@ -56,14 +56,14 @@ require(grid)
 ####Diveristy metrics:
 
 + Species richness (effective number of species - Hill1)
-+ Phylogenetic diveristy (Effective number of taxonomicaly completely distinct species)
-+ Functional diveristy (effectiv numer of carbon sources that a community can consume)
++ Phylogenetic diversity (Effective number of taxonomic completely distinct species)
++ Functional diversity (effective number of carbon sources that a community can consume)
 
 ####Ecosystem functions:
 
-+ Maximum Cell yield (averaged over the five highest cell yield sobserved for each community)
-+ Stability (inverse of the coefficent of variation of the detrended cell yield over the course of the experiment)
-+ remaining dissolev organic nitrogen at the end of the experiment. 
++ Maximum Cell yield (averaged over the five highest cell yield observed for each community)
++ Stability (inverse of the coefficient of variation of the detrended cell yield over the course of the experiment)
++ remaining dissolve organic nitrogen at the end of the experiment. 
 
 for that we first need to import the according data
 
@@ -80,7 +80,7 @@ DIV <- read.table("OTU_docs/DIV.txt", header = TRUE, sep = "\t", stringsAsFactor
 FunDiv <- read.table("EcoLogDocs/FunDiv.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 ```
 
-we can join the functional diveristy data to the rest and plot them, both against dilution and against each other
+we can join the functional diversity data to the rest and plot them, both against dilution and against each other
 
 ```{r, echo=FALSE}
 DIV <- na.omit(DIV) %>% 
@@ -148,9 +148,9 @@ ggplot(DIV, aes(x = DIL, y = FuncDiv , colour = Lake, shape = Lake, group = Lake
 ```
 
 
-For each diveristy metric, we have three measurements, taken at three timepoints. Our measure of ecosystem funcitoning however result in a single value per dilution level and Lake, as they integrate the whole course of the experiment. 
+For each diversity metric, we have three measurements, taken at three time points. Our measure of ecosystem functioning however result in a single value per dilution level and Lake, as they integrate the whole course of the experiment. 
 
-Therefore we have to take the average diveristy as predictor variable. In the graph below we show the value of each diverist metric plot together for the three sampling dates (coloured dots) and the average diversity (black dots)
+Therefore we have to take the average diversity as predictor variable. In the graph below we show the value of each divert metric plot together for the three sampling dates (colored dots) and the average diversity (black dots)
 
 ```{r, echo = FALSE}
 G1 <- DIV %>% 
@@ -185,7 +185,7 @@ avDIV <- select(DIV, -Sampling) %>%
   summarise_each(funs(mean(., na.rm = T)))
 ```
 
-now we can correlate each diveristy metric to each ecosystem function for each Lake. In order to be able to comapre the absolut value of the slopes, we scale all varibales to mean = 0 and sd = 1 prior to corrleation. Note that the nutrient data is already scaled so we join it after having scaled the other variables. 
+now we can correlate each diversity metric to each ecosystem function for each Lake. In order to be able to compare the absolute value of the slopes, we scale all variables to mean = 0 and sd = 1 prior to correlation. Note that the nutrient data is already scaled so we join it after having scaled the other variables. 
 
 Also, before we proceed, we exclude dilution level 0 form the data. See the manuscript for a discussion why
 
@@ -201,7 +201,7 @@ BEF <- filter(avDIV, DIL != 0) %>%
 head(BEF,2) 
 ```
 
-To see the correlations between the three metrics of EF and the three diverist metrics, we correlate them 
+To see the correlations between the three metrics of EF and the three divert metrics, we correlate them 
 
 ```{r, echo = FALSE}
 
@@ -219,7 +219,9 @@ BEF_long2 <- BEF %>% #gather both diveristy columns and EF in a single column re
 LM <- BEF_long2 %>% #regress each div metric against each EF, by Lake. extract p-value and r-square
   group_by(Lake, DIVmetric, EFmetric) %>% 
   do( glance( lm( scale(EFval) ~ scale(DIVval), .))) %>% 
-  select(Lake, DIVmetric, EFmetric, r.squared, p.value)
+  select(Lake, DIVmetric, EFmetric, adj.r.squared, p.value) %>% 
+  mutate(adj.r.squared = replace(adj.r.squared, adj.r.squared < 0, 0))
+  
 
 Label_x <- BEF_long2 %>% #calculate x value for where to add the linear regression statistic in respective panels
   group_by(DIVmetric, EFmetric) %>% 
@@ -250,7 +252,7 @@ G2 <-  ggplot(BEF_long, aes(x = DIVval, y = maxCells, shape = Lake))+
   stat_smooth(method = "lm", se = FALSE, linetype = "solid", size = 0.5, colour = "black")+
   geom_rect( data = LMmC, aes(x=NULL,y=NULL, xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
              fill = "white", alpha = 0.8) +
-  geom_text(data = LMmC, aes(x = x, y = y1, label = paste("r2.", signif(r.squared, 1), sep = " : " )), colour = "black", size = 2)+
+  geom_text(data = LMmC, aes(x = x, y = y1, label = paste("r2.", signif(adj.r.squared, 1), sep = " : " )), colour = "black", size = 2)+
   geom_text(data = LMmC, aes(x = x, y = y2, label = paste("p", signif(p.value, 1), sep = " : " )), colour = "black", size = 2)+
   facet_grid(Lake ~ DIVmetric, scales = "free")+
   theme_bw()+
@@ -270,7 +272,7 @@ G3 <- ggplot(BEF_long, aes(x = DIVval, y = Stability, shape = Lake))+
   stat_smooth(method = "lm", se = FALSE, linetype = "solid", size = 0.5, colour = "black")+
   geom_rect( data = LM_S, aes(x=NULL,y=NULL, xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
              fill = "white", alpha = 0.8) +
-  geom_text(data = LM_S, aes(x = x, y = y1, label = paste("r2.", signif(r.squared, 1), sep = " : " )), colour = "black", size = 2)+
+  geom_text(data = LM_S, aes(x = x, y = y1, label = paste("r2.", signif(adj.r.squared, 1), sep = " : " )), colour = "black", size = 2)+
   geom_text(data = LM_S, aes(x = x, y = y2, label = paste("p", signif(p.value, 1), sep = " : " )), colour = "black", size = 2)+
     facet_grid(Lake ~ DIVmetric, scales = "free")+
     theme_bw()+
@@ -289,7 +291,7 @@ G4 <- ggplot(BEF_long, aes(x = DIVval, y = DIN, shape = Lake))+
   stat_smooth(method = "lm", se = FALSE, linetype = "solid", size = 0.5, colour = "black")+
    geom_rect( data = LM_DIN, aes(x=NULL,y=NULL, xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
              fill = "white", alpha = 0.8) +
-  geom_text(data = LM_DIN, aes(x = x, y = y1, label = paste("r2.", signif(r.squared, 1), sep = " : " )), colour = "black", size = 2)+
+  geom_text(data = LM_DIN, aes(x = x, y = y1, label = paste("r2.", signif(adj.r.squared, 1), sep = " : " )), colour = "black", size = 2)+
   geom_text(data = LM_DIN, aes(x = x, y = y2, label = paste("p", signif(p.value, 1), sep = " : " )), colour = "black", size = 2)+
     facet_grid(Lake ~ DIVmetric, scales = "free")+
     theme_bw()+
@@ -311,7 +313,8 @@ MF_DF <- BEF_long %>% # calculate how many functions are over threshold for give
 LM_MF <- MF_DF %>% #regress each div metric against the number of EF of threshold. extract p-value and r-square
   group_by(Lake, DIVmetric) %>% 
   do( glance( lm(scale(funcMaxed) ~ scale(DIVval), .))) %>% 
-  select(Lake, DIVmetric, r.squared, p.value)
+  select(Lake, DIVmetric, adj.r.squared, p.value) %>% 
+  mutate(adj.r.squared = replace(adj.r.squared, adj.r.squared < 0, 0))
 
 LM_MF <- LM %>% ungroup %>% select(Lake, DIVmetric, x, xmin, xmax) %>% distinct %>% left_join(LM_MF ,.) # add x-values for adding of regression stat
 
@@ -320,7 +323,7 @@ G5 <- ggplot(MF_DF, aes(x = DIVval, y = funcMaxed, shape = Lake))+ # plot divers
   stat_smooth(method = "lm", se = FALSE, linetype = "solid", colour = "black", size = 0.5)+
    geom_rect( data = LM_MF, aes(x=NULL,y=NULL, xmin = xmin, xmax = xmax, ymin = 1.8, ymax = 2.7),
              fill = "white", alpha = 0.8) +
-  geom_text(data = LM_MF, aes(x = x, y = 2.5, label = paste("r2.", signif(r.squared, 1), sep = " : " )), colour = "black", size = 2)+
+  geom_text(data = LM_MF, aes(x = x, y = 2.5, label = paste("r2.", signif(adj.r.squared, 1), sep = " : " )), colour = "black", size = 2)+
   geom_text(data = LM_MF, aes(x = x, y = 2, label = paste("p", signif(p.value, 1), sep = " : " )), colour = "black", size = 2)+
     facet_grid(Lake ~ DIVmetric, scales="free_x")+
     theme_bw()+
@@ -344,9 +347,9 @@ dev.off()
 
 ```
 
-It is visible from the scatterplots that there doesn't seem to be a strong correlation between either of the diveristy metrics and either of the metrics of ecosystem functioning. 
+It is visible from the scatter-plots that there doesn't seem to be a strong correlation between either of the diversity metrics and either of the metrics of ecosystem functioning. 
 
-the statics that we present in the plots are linear correlations of the form Ecosystem Function ~ Diversity Metric. As assumption of normality are however not necessarily met, we present aslo the rank correlations:
+the statics that we present in the plots are linear correlations of the form Ecosystem Function ~ Diversity Metric. As assumption of normality are however not necessarily met, we present also the rank correlations:
 
 
 ```{r, echo = FALSE}
@@ -356,7 +359,7 @@ LM_rank <- BEF_long2 %>%
   do( glance( cor.test( .$EFval , .$DIVval, method = "spearman"))) %>% 
   select(Lake, DIVmetric, EFmetric, estimate, p.value)
 
-LM_rank <- select(LM, -r.squared, -p.value) %>% 
+LM_rank <- select(LM, -adj.r.squared, -p.value) %>% 
   left_join(., LM_rank)
 
 
