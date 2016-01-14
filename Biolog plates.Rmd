@@ -26,11 +26,11 @@ __this script does:__
 
   + quality control 
   + bias correction
-  + calculates functional diveristy based on Biolog EcoPlates
+  + calculates functional diversity based on Biolog EcoPlates
   
 __this script exports:__
   
-  dataframes:
+  data frames:
   
   + EcoLogDocs/FunDiv.txt       # functional diversity based on Biolog EcoPlates
   
@@ -64,7 +64,7 @@ The Ecoplates contain 31 different carbon sources in triplicates and three negat
 The carbon sources are in the wells `B1` to `H4`, the negative control is in well `A1`. 
 
 We incubated the plates directly with 150µl in each well and incubated them in the dark at room temperature for up to 100 hours.
-The plates were measured approximately every 12 hours to estimate the rate of the colour development.
+The plates were measured approximately every 12 hours to estimate the rate of the color development.
 
 first, we import the data and have a look at it
 
@@ -79,9 +79,9 @@ unique(EcoL$Date)
 
 `EcoL` has the following `r ncol(EcoL)` columns: `r colnames(EcoL)`
 
-`$Date` and `$Time` give the exact timepoint when the plate was read and `$Sampling`
+`$Date` and `$Time` give the exact time point when the plate was read and `$Sampling`
 represents the three independent sampling points. the `$hour` column gives the nominal
-timepoint of the reading. The `$BOT`column says from which bottle the sample was taken.
+time point of the reading. The `$BOT`column says from which bottle the sample was taken.
 
 looking more closely at the `$OD` column, we can see that not all entries are numeric
 
@@ -89,7 +89,7 @@ looking more closely at the `$OD` column, we can see that not all entries are nu
 is.numeric(EcoL$OD)
 ```
 
-let's look which sample are concerened:
+let's look which sample are concerned:
 ```{r, warning=FALSE, echo=TRUE}
 unique(EcoL[which(is.na(as.numeric(EcoL$OD))), ]$Sampling)
 unique(EcoL[which(is.na(as.numeric(EcoL$OD))), ]$BOT)
@@ -98,7 +98,7 @@ unique(EcoL[which(is.na(as.numeric(EcoL$OD))), ]$hour)
 
 We can see that the it is the 24h reading from all plates of the first sampling that don't have any OD readings.
 It seems like the template files have been saved instead of the actual readings. The data are lost, we have to exclude 
-them from the dataset. After exclusion we can transform OD to numeric as all none numeric values are gone
+them from the data set. After exclusion we can transform OD to numeric as all none numeric values are gone
 
 ```{r, warning=FALSE}
 EcoL <- EcoL[-c( which( is.na( as.numeric( EcoL$OD)))), ]
@@ -106,7 +106,7 @@ EcoL$OD700 <- as.numeric(EcoL$OD700)
 ```
 
 next, we merge the date and time column and transform it into POSIXct format. We
-then proceed and add and `$dhour`column that gives the exact time diffrence
+then proceed and add and `$dhour`column that gives the exact time difference
 (in hours) from the first to the last reading for each plate
 
 ```{r, echo=FALSE}
@@ -141,9 +141,9 @@ select(EcoL, Sampling, BOT, hour, dhour) %>%
     theme(legend.position = "none")
 ```
 
-we can see that the exact intervals vary  and that couriously, the total number of readings goes up to
+we can see that the exact intervals vary  and that curiously, the total number of readings goes up to
 9 per plate at the last sampling. The experimentator seemed to have gotten increasingly 
-excited and motivated throughout the coures of the experiment.
+excited and motivated throughout the course of the experiment.
 
 next, we check the blanks:
 
@@ -174,7 +174,7 @@ EcoLb <- EcoLb %>%
 
 There is no median outlier with an OD > `r max(EcoLb$medium_OD700)` which are realistic background values.
 
-We can now proceed and substract the median blanks from all OD readings.
+We can now proceed and subtract the median blanks from all OD readings.
 for that we exclude the `A1` wells from EcoL and then join the medium blanks to the remaining data
 
 ```{r}
@@ -199,17 +199,17 @@ EcoL %>% filter(BOT == 5, Sampling == "28.06") %>%
   
 ```
 
-In most cases, the three replicates react rather similar, however this is not alwas the case ( see wells `H3`or `G1` for example)
+In most cases, the three replicates react rather similar, however this is not always the case ( see wells `H3`or `G1` for example)
 
 starting from the blanked wells, we will no compute two response variables. 
 
 + the number of positive carbon sources on each plate
 + the median uptake rate of each carbon source on each plate. 
 
-Only those wells that show an OD developpment of over 0.2 are counted as
+Only those wells that show an OD development of over 0.2 are counted as
 positives
 
-because we need the full dataset to calculate the median uptake rate, we start with this:
+because we need the full data set to calculate the median uptake rate, we start with this:
 
 ### median uptake rate of carbon sources
 
@@ -233,8 +233,8 @@ However, we only keep $r$ estimates of models that
 
 **only wells that reach an OD ≥ 0.2 are counted as *positive*. Accordingly, we attempt to model only those and exclude all others**
 
-also, to make the fitting easier, we set all OD values < 0 to 0. (OD values < 0 arise if the reding is smaller than the
-reading of the median blank. It is noise nad no true signal)
+also, to make the fitting easier, we set all OD values < 0 to 0. (OD values < 0 arise if the reading is smaller than the
+reading of the median blank. It is noise and no true signal)
 
 note that I use `nlsLM` form the minpack.lm package to fit the gompertz function. It turned out that it was much more efficient at fitting the wast majority of the samples than `nls`. 
 
@@ -263,9 +263,9 @@ FitNls <- EcoL0.2 %>%
 EcoL_fit <- filter(FitNls, class(gompertz_fit) == "nls") %>% tidy(gompertz_fit) %>% group_by(term) %>% filter(term == "r")
 ```
 
-`r nrow(EcoL_fit)` von `r nrow(FitNls)` could be modelled succesfully.
+`r nrow(EcoL_fit)` out of `r nrow(FitNls)` could be modeled successfully.
 
-To see whether we failed to model wells that shoudl have been modelled, we inspect the not modelled wells graphically
+To see whether we failed to model wells that should have been modeled, we inspect the not modeled wells graphically
 
 ```{r}
 
@@ -278,9 +278,9 @@ filter(FitNls, class(gompertz_fit) != "nls") %>%
   theme_bw()
 ```
 
-in total, only very few Wells failed. Some of them show clear posiotive reponses and probably fail becasue of the missing datapoint at 24h in `Sampling : 14.06`. However, too few wells failed to be concerned about them biasing the results. We can safely ignore them. 
+in total, only very few Wells failed. Some of them show clear positive reposes and probably fail because of the missing data point at 24h in `Sampling : 14.06`. However, too few wells failed to be concerned about them biasing the results. We can safely ignore them. 
 
-However, we also have to check the quality of the paramter estimates:
+However, we also have to check the quality of the parameter estimates:
 
 ```{r, fig.width=6, fig.height=6, warning=FALSE}
 
@@ -298,7 +298,7 @@ ggplot(EcoL_fit, aes(x= estimate))+
   scale_x_continuous(limits = c(-0.01,0.5))
 ```
 
-We see that the bulk of estimates is in a rather narrow range with `0 ≤ r ≤ 0.1`  but some estimators fall (way) outside this range. The significant estimators have less outliers and are more realistic. To avoid biases from outliers in the estimation of functional diveristy 
+We see that the bulk of estimates is in a rather narrow range with `0 ≤ r ≤ 0.1`  but some estimators fall (way) outside this range. The significant estimators have less outliers and are more realistic. To avoid biases from outliers in the estimation of functional diversity 
 without needing to exclude too much data, we adopt the following approach:
 
 + Wells that we defined as positive (see below) but were no `r` could be estimated are excluded
@@ -310,7 +310,7 @@ This last step takes the good estimates to make a qualified guess about a realis
 according to our definition **we score those wells as positive, where the median maximum OD among the replicates is ≥ 0.2**. 
 This is equivalent to 2 out of 3 replicates reaching an OD ≥ 0.2. 
 
-so we go back to the full dataset and 
+so we go back to the full data set and 
 
 + compute the maximum OD 
 + calculate the median maximum OD
@@ -345,9 +345,9 @@ EcoL_r <- group_by(EcoL, Sampling, BOT, Wells, rep) %>%
 
 ```
 
-Now we need to put the data in the form of a matrix where each row is a plate and each column is a carbon source. We will take each carbon source as different *trait* with the estimated upatke rate (`r`) as *trait value*. 
+Now we need to put the data in the form of a matrix where each row is a plate and each column is a carbon source. We will take each carbon source as different *trait* with the estimated uptake rate (`r`) as *trait value*. 
 
-For that we first create a dataframe with `Sample` and `Bot` and a unique `Sample_BOT` identifier, and the estimated uptake rates
+For that we first create a data frame with `Sample` and `Bot` and a unique `Sample_BOT` identifier, and the estimated uptake rates
 
 ```{r}
 EcoL_Func <- EcoL %>% 
@@ -404,12 +404,12 @@ ggsave("figures/Fig_maybe_1.pdf", C_heat, height = 8, width = 16)
 ```
 
 
-now we caclulate functional diveristy of the samples.For that we will consider each carbon source as trait and the uptake rate as trait value. However, as we don't have neither information about which species have which traits we cannot compute trait diveristy as it is usually done. 
+now we calculate functional diversity of the samples.For that we will consider each carbon source as trait and the uptake rate as trait value. However, as we don't have neither information about which species have which traits we cannot compute trait diversity as it is usually done. 
 
 We choose another approach which is equivalent to the way we calculate species richness, i.e. the effective number of traits in the community. 
-For that we will calculate the Shannon entropy of traits in each sample, taking the uptake rate as "relative abundance". We eill then connvert the entropy to an effective number. 
+For that we will calculate the Shannon entropy of traits in each sample, taking the uptake rate as "relative abundance". We will then convert the entropy to an effective number. 
 
-In our case the minimum value is 0 (no carbon source is metabolized) and the maximum value is 31 (all carbon sources are matabolized evenly)
+In our case the minimum value is 0 (no carbon source is metabolized) and the maximum value is 31 (all carbon sources are metabolized evenly)
 
 ```{r}
 FunDiv <- diversity(EcoL_Func_M) %>% 
@@ -422,7 +422,7 @@ FunDiv <- diversity(EcoL_Func_M) %>%
   mutate(Sampling = factor(Sampling, levels = c("14.06", "28.06", "12.07")))
 ``` 
 
-we clean the dataframe and export the Functional diveristy data
+we clean the data frame and export the Functional diversity data
 
 ```{r}
 FunDiv <- select(FunDiv, Sampling, BOT, Lake, DIL, FuncDiv)
