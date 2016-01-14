@@ -1,5 +1,5 @@
 ---
-title: "Analysis of Bacterial Cell Yiel Data"
+title: "Analysis of Bacterial Cell Yield Data"
 author: "Fabian Roger"
 date: "9 Oct 2015"
 output:
@@ -22,7 +22,7 @@ __this script imports:__
 + FlowCytoDocs/Timestamps_BacCounts.txt   #timestamps of file readings
 + FlowCytoDocs/TrueCounts_main.txt.txt    #flow cyt. counts of truecounts as absolute reference
 + FlowCytoDocs/TrueCounts_0614_HF.txt     #truecount reference for one sample that has been read at different flowrate
-+ FlowCytoDocs/Timestamps_TrueCounts.txt  #timestamp of treucount readings
++ FlowCytoDocs/Timestamps_TrueCounts.txt  #timestamp of truecount readings
 + FlowCytoDocs/TrueCount Reference.txt    #file that assigns the Truecounts to respective samples
   
 __this script does:__
@@ -35,7 +35,7 @@ __this script does:__
 
 __this script exports:__
   
-  dataframes:
+  data frames:
   
   + response_var/maxBM.txt        #maximum cell counts
   + response_var/Stability.txt    #temporal stability of the cell counts
@@ -60,14 +60,14 @@ require(ggplot2)
 
 the Gating:
 
-[extract from my labbook]
+[extract from my lab-book]
 
 > I re-gate the data, based on a dot plot, a density plot showing 95% of the dots and 2 3D histograms. The aim is to gate everything besides the cluster in the lower left corner that is unlikely to be bacteria but some kind of “trash” (or viruses?) . I will change the gate as little as possible. [...] The Batch count is done [...] with a file increament of 48, hence counting one Bottle chronologically at the time (to be consistent with the gating within one bottle). The Stats are exported in “Bac Counts DivTox 2nd counting”.
   
 ![example of a flow cytometry reading with the bacteria and bead gates](FlowCytoDocs/flowcyto_example_gate.png)  
 example of the flow cyto gating. The upper graph shows the dot plot and the lower graph the density plot
 
-first, we import the afformentioned file, clean it and have a look at it
+first, we import the aforementioned file, clean it and have a look at it
 
 ```{r, echo=FALSE}
 Bac <- read.table("FlowCytoDocs/Bacterial_counts.txt", header=T, sep="\t")
@@ -87,7 +87,7 @@ __R1__ in the in the picture above and gates the beads that were added as intern
 
 The Gate __G2__ correspond to region __R2__ and gates the bacterial cells
 
-+ I split up the information contained in the `$FileN` colum into three new columns
++ I split up the information contained in the `$FileN` locum into three new columns
     + `$SO` is the sampling occasion ( 01 - 21) 
     + `$DAT` is the sampling date (02/06 to 12/07)
     + `$BOT` is the number of the bottle that was sampled (01 - 48)
@@ -97,8 +97,8 @@ The Gate __G2__ correspond to region __R2__ and gates the bacterial cells
 The dilution factor represent the exponent of the dilution. Each dilution step was \~ 1 : 4.5. 
 So the 10^th^ dilution would be a 1 : 4.5^10^ dilution and the dilution factor
 would be 10.  
-The experiment had 10 dilution factors (0 - 10), and a sterile controle. As
-the sterile controle got invaded by (assumingly) environmental bacteria, we included it
+The experiment had 10 dilution factors (0 - 10), and a sterile control. As
+the sterile control got invaded by (assumingly) environmental bacteria, we included it
 as treatment.  
 
 ```{r, echo=FALSE}
@@ -131,7 +131,7 @@ head(Bac[ , -1], 2)
 ##checking the beads
 
 we added 50µl of 1µm fluorescent beads solution with a known concentration into 
-each sample as internal standard. The bead solution was sonnicated thorowly at the beginning
+each sample as internal standard. The bead solution was sonnicated thoroughly at the beginning
 of each day and between each batch. However, the beads might have aggregated during the day or, to the contrary, aggregates that formed over night might have been broken up more and more during subsequent sonications. Both effect potentially
 biased the cell counts. To determine the concentration of the bead solution at the beginning of the day and after every second
 batch, we counted the beads with an absolute standard, BD Trucount^TM^ Tubes, containing exactly 52187 beads. 
@@ -165,8 +165,8 @@ Bac$Rack <- rep( c( rep( "a", 24), rep( "b", 24)), 21)
 ```
 
 to visually check for biases, i plot the bead counts of each file against it's
-aquisition time, split by aquisition day. To visualize the batches, we alternate
-the colours every 24 samples ( = the size of 1 batch )
+acquisition time, split by acquisition day. To visualize the batches, we alternate
+the colors every 24 samples ( = the size of 1 batch )
 
 ```{r, echo=FALSE, fig.width=6, fig.height=6}
 ggplot( Bac,  aes( x = ctim, y = G1, colour = Rack)) +
@@ -182,7 +182,7 @@ ggplot( Bac,  aes( x = ctim, y = G1, colour = Rack)) +
 ```
   
 
-Looking at the graph above, it looks like the bead counts goe up over the course of 
+Looking at the graph above, it looks like the bead counts go up over the course of 
 a day. While it is normal that the flowrate of the flow-cytometer varies randomly (as can be seen
 by the spread of the bead counts within each batch), the increase of the bead counts over the course of a day
 indicates that __concentration__ of the bead solution changed. We have the BD Trucount^TM^ counts to correct for
@@ -303,12 +303,12 @@ ggplot( Bac,  aes( x = ctim, y = G1*( min( BeadC)/BeadC), colour = Rack))+
         legend.position = "none")
 ```
 
-As we can see from the corrected bead counts above, the uppwards trend 
+As we can see from the corrected bead counts above, the upwards trend 
 disappeared. We conclude from that, that they standardization by the Trucounts^TM^
 worked. 
 
 looking at the Graph above, we can also see, that some bead counts are way below the average.
-To decide wheather to exclude those points, we proceed with an outlier analysis. 
+To decide whether to exclude those points, we proceed with an outlier analysis. 
 
 
 ```{r, echo=FALSE}
@@ -343,18 +343,18 @@ Bac[W[1], c("G1","G2")] <- NA
 ```
 
 For `r as.character(Bac$DAT[W[2]])` both the bead count and the cell number is low.
-This indicates that the flow rate was just exeptionaly low. The resulting cell number is 
+This indicates that the flow rate was just exceptionally low. The resulting cell number is 
 `r (Bac[ W[ 2], ]$BeadC / Bac[ W[ 2], ]$G1) * Bac[ W[ 2], ]$G2`, which doesn't seem unreasonable. We keep the
 sample _as is_.
 
 For `r as.character(Bac$DAT[W[3]])` the cell counts are reasonable but the bead counts are absent.
-We replace the bead count by the average bead count of the 1 previous and the 2 following samples (run closeby)
+We replace the bead count by the average bead count of the 1 previous and the 2 following samples (run closely)
 
 ```{r, echo=FALSE}
 Bac$G1[ W[3] ] <- mean( Bac$G1[ c( W[3] - 1,  W[3] + 1,  W[3] + 2)])
 ```
 
-the following sample is missing and replaced by NA (spourious cell counts in `$G2`)
+the following sample is missing and replaced by NA (spurious cell counts in `$G2`)
 ```{r, echo=FALSE}
 Bac[Bac$BOT == "22" & Bac$Lake == "Delsjön" & Bac$DIL == "09" & Bac$DAT == as.POSIXct("2012-07-06", tz = "GMT"),
     c("DAT", "Lake", "DIL", "G1", "G2", "BeadC")]
@@ -362,7 +362,7 @@ Bac[Bac$BOT == "22" & Bac$Lake == "Delsjön" & Bac$DIL == "09" & Bac$DAT == as.P
 Bac[ Bac$BOT == "22" & Bac$Lake == "Delsjön" & Bac$DIL == "09" & Bac$DAT == as.POSIXct("2012-07-06", tz = "GMT"), c("G1","G2")] <- NA
 ```
 
-Now that the dataset is bias corrected and cleaned, we can finally calculate the cell concentration in each sample.
+Now that the data set is bias corrected and cleaned, we can finally calculate the cell concentration in each sample.
 We will also drop all columns that are not needed for downstream analysis.
 
 ```{r}
@@ -485,12 +485,12 @@ write.table(maxBM, "response_var/maxBM.txt", sep = "\t")
 
 ### stability
 
-we want to calculate __stability__ as we expect that a species rich assamblage 
+we want to calculate __stability__ as we expect that a species rich assemblage 
 is more stable over time than a species poor one (portfolio effect). 
 
 As metric of stability we use the inverse of the coefficient of variance
 
-However, as the different dilutions start from differnt cell concentrations,
+However, as the different dilutions start from different cell concentrations,
 we have to exclude the re-growth phase. by doing this we define stability
 as the _fluctuation of community cell yield around the mean of the stationary phase_
 
@@ -515,9 +515,9 @@ ggplot( Bac_stationary,aes( x = DAT, y = Cells, group = Lake, colour = Lake, sha
 
 
 Looking at the graph of the stationary phase abundance, we can also see that some of the 
-cultures experience a long-term trend. As we are only intersted in looking how stable the
-culture is around the mean, we detrend the stationary phase cell abundance. For that, we fit 
-a linear model of the form `Cells/ml ~ date` to the data and calcualte the stability on the residuals.
+cultures experience a long-term trend. As we are only interested in looking how stable the
+culture is around the mean, we detrended the stationary phase cell abundance. For that, we fit 
+a linear model of the form `Cells/ml ~ date` to the data and calculate the stability on the residuals.
 In order to avoid negative residuals we add the mean of the cell counts.
 
 ```{r, echo=FALSE}
@@ -552,7 +552,7 @@ ggplot( Bac_stationary,aes( x = DAT, y = Resid, group = Lake, colour = Lake, sha
         legend.position = "bottom") 
 ```
 
-The detrending was sucessfull and we can now proceed to calculate Stability
+The detrending was successful and we can now proceed to calculate Stability
 
 first we define a function to calculate the coefficient of variance (CV)
 ```{r}
