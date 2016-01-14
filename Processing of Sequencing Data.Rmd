@@ -35,22 +35,19 @@ require(ape)
 ls OTU_docs/quality_reads
 ```
 
-first we cat the files so that we can analyse them together, not separately
+First we cat the files so that we can analyse them together, not separately.
 
 ```{sh}
 cat OTU_docs/quality_reads/pool1_reads.fasta OTU_docs/quality_reads/pool2_reads.fasta OTU_docs/quality_reads/pool3_reads.fasta > OTU_docs/qiime_merged.fasta
 ```
 
-next we dereplicate the reads. This means, that all identical reads will be merged and a size annotation will be added to the header, saying how many reads of a given read were found. 
-
-from here on we will do the majority of the analysis in usearch
+Next we de-replicate the reads. This means that all identical reads will be merged and a size annotation will be added to the header, saying how many reads of a given read were found. From here on we will do the majority of the analysis in usearch. 
 
 ```{sh}
 usearch
 ```
 
-
-as Usearch uses progress bars to track progress, I will redirect the output into an `output.tmp` file from which I can only print the last lines containing the summery statistic of the completed process
+As Usearch uses progress bars to track progress, I will redirect the output into an `output.tmp` file from which I can only print the last lines containing the summery statistic of the completed process. 
 
 ```{sh, results="hide"}
 usearch -derep_fulllength OTU_docs/qiime_merged.fasta -fastaout OTU_docs/uniques.fasta -sizeout 2> output.tmp
@@ -60,14 +57,11 @@ sed -ibak $'s/\x0D/\\\n/g' output.tmp
 tail -n5 output.tmp
 ```
 
-
-no we sort the unique sequences by cluster size. 
+Now we sort the unique sequences by cluster size. 
 
 **in this step we will exclude all global singletons**
 
-see the discussion [here](http://drive5.com/usearch/manual/singletons.html) for why. 
-
-In short, singletons are likely to not represent biological sequences and should therefor not be included for the OTU clustering. This *doesn't* mean that we exclude all the sequences as these will be mapped back to the OTUs after OTU clustering. 
+See the discussion [here](http://drive5.com/usearch/manual/singletons.html) for why. In short, singletons are likely to not represent biological sequences and should therefore not be included for the OTU clustering. This *doesn't* mean that we exclude all the sequences as these will be mapped back to the OTUs after OTU clustering. 
 
 ```{sh, results="hide"}
 usearch -sortbysize OTU_docs/uniques.fasta -fastaout OTU_docs/seqs_sorted.fasta -minsize 2 2> output.tmp
@@ -77,9 +71,7 @@ sed -ibak $'s/\x0D/\\\n/g' output.tmp
 tail -n5 output.tmp
 ```
 
-
-
-no we cluster the remaining sequences with an OTU radius of 3%. Robert Edgar discusses this [here](http://drive5.com/usearch/manual/cmd_cluster_otus.html). Note that this is not necessarily equivalent to the 97% identity clustering of other pipelines. As 3% is the difference form the **centroid** sequence, some people argue that 1.5% radius would be the equivalent (3% maximum difference). For this analyses however, we keep the clustering at 3%
+Now we cluster the remaining sequences with an OTU radius of 3%. Robert Edgar discusses this [here](http://drive5.com/usearch/manual/cmd_cluster_otus.html). Note that this is not necessarily equivalent to the 97% identity clustering of other pipelines. As 3% is the difference form the **centroid** sequence, some people argue that 1.5% radius would be the equivalent (3% maximum difference). For this analyses however, we keep the clustering at 3%. 
 
 > The -otu\_radius_pct option specifies the OTU "radius" as a percentage, i.e. the maximum difference between an OTU member >sequence and the representative sequence of that OTU. Default is 3.0, corresponding to a minimum identity of 97%. 
 
@@ -91,9 +83,7 @@ sed -ibak $'s/\x0D/\\\n/g' output.tmp
 tail -n5 output.tmp
 ```
 
-
-
-now we proceed to chimera checking using the rdp gold reference database. The database was downloaded in 2014-10-22
+Now we proceed to chimera checking using the rdp gold reference database. The database was downloaded in 2014-10-22. 
 
 ```{sh, results="hide"}
 usearch -uchime_ref OTU_docs/otus.fasta -db OTU_docs/reference_files/rdp_gold.fasta -uchimeout OTU_docs/results.uchime -uchimealns OTU_docs/uchimealns.txt -chimeras OTU_docs/chimeras.fasta -nonchimeras OTU_docs/nonchimeras.fasta -strand plus 2> output.tmp
@@ -103,7 +93,7 @@ sed -ibak $'s/\x0D/\\\n/g' output.tmp
 tail -n5 output.tmp
 ```
 
-next, we rename the non-chimeric OTUs by number instead of size annotations with the fasta_number.py script. The script is part of the python scripts provided [here](http://drive5.com/python/). On my system the scripts are installed under ~/drive5_py. 
+Next, we rename the non-chimeric OTUs by number instead of size annotations with the fasta_number.py script. The script is part of the python scripts provided [here](http://drive5.com/python/). On my system the scripts are installed under ~/drive5_py. 
 
 ```{sh}
 python ~/drive5_py/fasta_number.py OTU_docs/nonchimeras.fasta OTU_ > OTU_docs/numbered_OTU.fasta
@@ -112,9 +102,9 @@ python ~/drive5_py/fasta_number.py OTU_docs/nonchimeras.fasta OTU_ > OTU_docs/nu
 
 Now that we have our set of non-chimeric OTUs, we can use the reference sequences to assign a taxonomy. We use the [utax algorithm](http://www.drive5.com/usearch/manual/utax_algo.html)
 
-> At a high level, UTAX is a k-mer based method which looks for words in common between the query sequence and reference sequences with known taxonomy. A score calculated from word counts is used to estimate a confidence value for each taxonomic level. Confidence values are trained to give a realistic estimate of error rates
+> At a high level, UTAX is a k-mer based method which looks for words in common between the query sequence and reference sequences with known taxonomy. A score calculated from word counts is used to estimate a confidence value for each taxonomic level. Confidence values are trained to give a realistic estimate of error rates.
 
-for the assignment, we use the `rdp_16s_trainset15` downloaded from [here](http://www.drive5.com/usearch/manual/utax_downloads.html). 
+For the assignment, we use the `rdp_16s_trainset15` downloaded from [here](http://www.drive5.com/usearch/manual/utax_downloads.html). 
 
 ```{sh, results="hide"}
 usearch -makeudb_utax OTU_docs/reference_files/refdb.fa -output OTU_docs/reference_files/refdb.udb -taxconfsin OTU_docs/reference_files/500.tc 2> output.tmp
@@ -131,9 +121,10 @@ sed -ibak $'s/\x0D/\\\n/g' output.tmp
 tail -n5 output.tmp
 ```
 
-now, we map all the reads back to the OTUs. All the reads that came out from the quality control are in the file **qiime_merged.fasta**, we take this reads an attempt to assign all of them to the OTUs that we just constructed an which are stored in the file **numbered_OTU.fasta**
+Now we map all the reads back to the OTUs. All the reads that came out from the quality control are in the file **qiime_merged.fasta**, we take this reads anD attempt to assign all of them to the OTUs that we just constructed an which are stored in the file **numbered_OTU.fasta**
 
 However, the `-usearch_global` command doesn't take `_` as a separator. Therefore we remove all numbers after the read label so that the header starts with the correct read label and is delimited by a `.`. 
+
 ```{sh}
 head -n 2 OTU_docs/qiime_merged.fasta
 
@@ -142,8 +133,8 @@ sed -e 's/\(gbg.\{1,3\}\)_[0-9]*/\1/g' <OTU_docs/qiime_merged.fasta> OTU_docs/qi
 head -n 2 OTU_docs/qiime_merged_newlabel.fasta
 ```
 
+Now we can use the usearch_global command.
 
-now we can use the usearch_global command
 ```{sh, results="hide"}
 usearch -usearch_global OTU_docs/qiime_merged_newlabel.fasta  -db OTU_docs/numbered_OTU_wTax.fasta -strand plus -id 0.97 -uc OTU_docs/readmap.uc -otutabout OTU_docs/OTU_97.txt 2> output.tmp
 ```
@@ -152,13 +143,13 @@ sed -ibak $'s/\x0D/\\\n/g' output.tmp
 tail -n5 output.tmp
 ```
 
-for some strange reason there is a `#` before the first column name in the `OTU_97.txt`file, which we need to remove before we can import the OTU table in R. 
+For some strange reason there is a `#` before the first column name in the `OTU_97.txt`file, which we need to remove before we can import the OTU table in R. 
 
 ```{sh}
 sed -e 's/#OTU/OTU/' OTU_docs/OTU_97.txt > OTU_docs/OTU_97.txt.tmp && mv OTU_docs/OTU_97.txt.tmp OTU_docs/OTU_97.txt
 ```
 
-now we import the OTU table into R
+Now we import the OTU table into R.
 
 ```{r}
 OTU <- read.table("OTU_docs/OTU_97.txt", sep = "\t", header = T, stringsAsFactor = F)
@@ -166,7 +157,7 @@ OTU <- read.table("OTU_docs/OTU_97.txt", sep = "\t", header = T, stringsAsFactor
 
 `utax` attaches the taxonomy as one `$taxonomy`column at the end of the OTU table. The taxa are comma separated and the probability of the correctness of the assignment is given in brackets. R:Edgar recommends to use a threshold of 0.9 to trust the assignment. 
 
-We will take out the taxonomy from the OTU table and create a new `TAX` table with the taxonomic assignment of each OTU
+We will extract the taxonomy from the OTU table and create a new `TAX` table with the taxonomic assignment of each OTU.
 
 ```{r}
 # example
@@ -228,12 +219,12 @@ TAX_wide <- TAX.list$TAX_wide
 OTU <- select(OTU, -taxonomy)
 ```
 
-Both data frames (`TAX_long` & `TAX_wide`) still contain all OTUs. Now, we want to take out all OTUs that are likely to be Chloroplasts or Mitochondria which could have passed the filters. For that we will filter out all OTUs that
+Both data frames (`TAX_long` & `TAX_wide`) still contain all OTUs. We want to take out all OTUs that are likely to be Chloroplasts or Mitochondria which could have passed the filters. For that we will filter out all OTUs that
 
 + for which the best `class` assignment is `"Chloroplast"`
 + for  which the best `order` assignment is `"Rickettsiales"` (that's how Mitochondria Sequences are classified in the RDP database)
 
-we will also exclude all `"Archaea"` sequences as our primers were not designed to capture `"Archaea"` 
+We will also exclude all `"Archaea"` sequences as our primers were not designed to capture `"Archaea"` 
 
 Finaly we exclude all OTUs that don't have at least a 50% likelyhood to belong to `"Bacteria"`
 
@@ -269,7 +260,7 @@ data.frame(OTU.ID = as.character(BAC), OTUabund = rowSums(OTU[OTU$OTU.ID %in% BA
 
 ```
 
-for further analysis we will only keep the OTUs that have been assigned to the domain `Bacteria`
+For further analysis we will only keep the OTUs that have been assigned to the domain `Bacteria`.
 We clean the `OTU` table and the `TAX_wide` table of all other OTUs and export them. We also export a file containing all OTU's that are assigned as `Bacteria` .
 
 ```{r}
@@ -288,7 +279,7 @@ OTU %>%
 BAC_OTUs %>% as.character %>% cat(., file = "OTU_docs/BAC_OTUs.txt", sep ="|")
 ```
 
-to clean the file `numbered_OTU_wTax.fasta`from the sequences that we don't want to keep, we move the analysis to Qiime where we can use the python script `filter_fasta.py`. 
+To clean the file `numbered_OTU_wTax.fasta`from the sequences that we don't want to keep, we move the analysis to Qiime where we can use the python script `filter_fasta.py`. 
 
 **the following code is run directly in the console as calling qiime with sytsem() doesn't seem to work**
 The exact commands are included in this document but can't be run as a script. 
@@ -305,7 +296,7 @@ filter_fasta.py -f OTU_docs/numbered_OTU_wTax.fasta -s OTU_docs/OTU_BAC.txt -o O
 grep -c -E '^>' OTU_docs/numbered_OTU_wTax_clean.fasta
 ```
 
-next with proceed with construction of a phylogenetic tree. before the construction of the tree, we strip the phylogenetic information from the sequence label (otherwise all sequences are named by their full header). Then, we
+Next we proceed with construction of a phylogenetic tree. Before the construction of the tree, we strip the phylogenetic information from the sequence label (otherwise all sequences are named by their full header). Then, we
 
 + align the representative sequences against the greengen full-length 16S database (default in qiime) using the (default) pynast algorithm
 + filter 'all gaps' positions
@@ -323,7 +314,7 @@ filter_alignment.py -i pynast_aligned/numbered_OTU_aligned.fasta -o pynast_align
 make_phylogeny.py -i pynast_aligned/numbered_OTU_aligned_pfiltered.fasta -r midpoint -o OTU97.tre
 ```
 
-as we need an ultrametric tree to estimate phylogenetic diversity we need to make the tree ultrametric. We will use pathd8 to achieve this
+As we need an ultrametric tree to estimate phylogenetic diversity we need to make the tree ultrametric. We will use pathd8 to achieve this.
 
 ```{sh, eval = FALSE}
 
@@ -340,35 +331,3 @@ TREE$tip.label <- sub("'(\\w+)'", "\\1", TREE$tip.label)
 write.tree(TREE, "OTU_docs/OTU97_um.tre")
 
 ```
-
-
-
-
-
-```{r}
-
-AHH <- function(x) {
-  
-  TFff <- c()
-  for (i in 2 : length(x)){
-   TF <- c(is.na(x[i-1]), is.na(x[i])) 
-   if(identical(TF, c(TRUE, FALSE))) TFff[i-1] <- "AHHHH" else {TFff[i-1] <- "all good"} 
-     }
-  
-  if("AHHHH" %in% TFff) return("AHHHHH") else {return("all good")}
-     
-  
-}
-
-
-
-
-#excluded OTUs
-
-EXCL <- c("OTU_74","OTU_132","OTU_153","OTU_181","OTU_190","OTU_220","OTU_245","OTU_267","OTU_444","OTU_483","OTU_489","OTU_515","OTU_564","OTU_572","OTU_573","OTU_600","OTU_611","OTU_629","OTU_637","OTU_634","OTU_686","OTU_732","OTU_774","OTU_793","OTU_924","OTU_978","OTU_999","OTU_1046","OTU_1055")
-
-TAX_long[TAX_long$OTU.ID %in% EXCL&
-           TAX_long$tax_order == "d",]
-
-```
-
