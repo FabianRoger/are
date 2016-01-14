@@ -80,7 +80,7 @@ DIV <- read.table("OTU_docs/DIV.txt", header = TRUE, sep = "\t", stringsAsFactor
 FunDiv <- read.table("EcoLogDocs/FunDiv.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 ```
 
-we can join the functional diversity data to the rest and plot them, both against dilution and against each other
+We can join the functional diversity data to the rest and plot them, both against dilution and against each other. 
 
 ```{r, echo=FALSE}
 DIV <- na.omit(DIV) %>% 
@@ -91,13 +91,14 @@ DIV$Lake <- factor(DIV$Lake, levels = c("Botan", "Delsjön", "Lerum", "Surtesjö
                    labels = c("Lake 1", "Lake 2", "Lake 3", "Lake 4"))
 
 
-divPairs2 <- ggpairs(DIV,
+divPairs2 <- ggscatmat(as.data.frame(DIV),
         columns = 5:7, 
-        colour = 'Lake', 
-        columnLabels = c("effective number\nof species", "phylogenetic\ndiversity", "functional\ndiveristy"),
-        lower = list(continuous = "smooth"), 
-        title = "correlation between the diveristy metrics by sampling date")+
-  theme_bw(base_size = 10) 
+        color = 'Lake')+
+  theme_bw() +
+  theme(legend.position = "bottom")+
+  scale_colour_manual(values = c("orange", "darkred", "darkgreen", "darkblue"  ))+
+  labs(title = "correlation between the diveristy metrics by lake",
+       x = "", y="")
 
 divPairs2
 ```
@@ -145,10 +146,7 @@ ggplot(DIV, aes(x = DIL, y = FuncDiv , colour = Lake, shape = Lake, group = Lake
 
 ```
 
-
-For each diversity metric, we have three measurements, taken at three time points. Our measure of ecosystem functioning however result in a single value per dilution level and Lake, as they integrate the whole course of the experiment. 
-
-Therefore we have to take the average diversity as predictor variable. In the graph below we show the value of each divert metric plot together for the three sampling dates (colored dots) and the average diversity (black dots)
+For each diversity metric, we have three measurements, taken at three time points. Our measure of ecosystem functioning however result in a single value per dilution level and lake, as they integrate the whole course of the experiment. Therefore we have to take the average diversity as predictor variable. In the graph below we show the value of each divert metric plot together for the three sampling dates (colored dots) and the average diversity (black dots).
 
 ```{r, echo = FALSE}
 G1 <- DIV %>% 
@@ -184,13 +182,6 @@ avDIV <- select(DIV, -Sampling) %>%
 ```
 
 ```{r, echo = F}
-divPairs3 <- ggpairs(avDIV,
-        columns = 4:6, 
-        colour = 'Lake', 
-        columnLabels = c("effective number\nof species", "phylogenetic\ndiversity", "functional\ndiversity"),
-        lower = list(continuous = "smooth"), 
-        title = "correlation between the average diveristy metrics by Lake")+
-  theme_bw(base_size = 8) 
 
 divPairs3 <- ggscatmat(as.data.frame(avDIV),
         columns = 4:6, 
@@ -198,7 +189,7 @@ divPairs3 <- ggscatmat(as.data.frame(avDIV),
   theme_bw() +
   theme(legend.position = "bottom")+
   scale_colour_manual(values = c("orange", "darkred", "darkgreen", "darkblue"  ))+
-  labs(title = "correlation between the average diveristy metrics by Lake",
+  labs(title = "correlation between the average diveristy metrics by lake",
        x = "", y="")
 
 divPairs3
@@ -206,25 +197,31 @@ divPairs3
 pdf("figures/Figure_S_3.pdf")
 print(divPairs3)
 dev.off()
+```
 
+
+The graph about shows the pearson correlations. We can also look at the r-squares (squared pearson correlations) and the p-values. 
+
+```{r, echo = T}
+# correlation of functional diversity and effective number of species
 avDIV %>% 
   group_by(Lake) %>% 
   do(glance(lm(FuncDiv~effN, data = .)))
 
+# correlation of functional diveristy and phylogenetic diversity
 avDIV %>% 
   group_by(Lake) %>% 
   do(glance(lm(FuncDiv~PD, data = .)))
 
+# correlation of effective number of species and phylogenetic diversity
 avDIV %>% 
   group_by(Lake) %>% 
   do(glance(lm(effN~PD, data = .)))
 
-
-
 ```
 
 
-let's look at some summary statistics of the diveristy metrics
+Let's look at some summary statistics of the diveristy metrics.
 
 ```{r, echo = FALSE}
 
@@ -250,11 +247,9 @@ DIV %>%
 
 ```
 
+Now we can correlate each diversity metric to each ecosystem function for each Lake. In order to be able to compare the absolute value of the slopes, we scale all variables to mean = 0 and sd = 1 prior to correlation. Note that the nutrient data is already scaled so we join it after having scaled the other variables. 
 
-now we can correlate each diversity metric to each ecosystem function for each Lake. In order to be able to compare the absolute value of the slopes, we scale all variables to mean = 0 and sd = 1 prior to correlation. Note that the nutrient data is already scaled so we join it after having scaled the other variables. 
-
-Also, before we proceed, we exclude dilution level 0 form the data. See the manuscript for a discussion why
-
+Also, before we proceed, we exclude dilution level 0 form the data. See the manuscript for a discussion why.
  
 ```{r}
 
@@ -271,7 +266,7 @@ BEF <- filter(avDIV, DIL != 0) %>%
 head(BEF,2) 
 ```
 
-To see the correlations between the three metrics of EF and the three divert metrics, we correlate them 
+To see the correlations between the three metrics of EF and the three diversity metrics, we correlate them.
 
 ```{r, echo = FALSE}
 
@@ -416,9 +411,8 @@ dev.off()
 
 ```
 
-It is visible from the scatter-plots that there doesn't seem to be a strong correlation between either of the diversity metrics and either of the metrics of ecosystem functioning. 
+It is visible from the scatter-plots that there os no strong correlation between either of the diversity metrics and either of the ecosystem functioning metrics. We can compute some summary statistics to see how many relationships are significant and how much variance is explained on average. 
 
-We can compute some summary statistics to see how many relationships are significant and how much variance is explained on average 
 ```{r, echo = FALSE}
 
 LM_sum <- LM %>% ungroup %>% select( Lake, DIVmetric, adj.r.squared, p.value)
@@ -446,9 +440,7 @@ LM_all %>%
 
 ```
 
-
-the statics that we present in the plots are linear correlations of the form Ecosystem Function ~ Diversity Metric. As assumption of normality are however not necessarily met, we present also the rank correlations:
-
+The statics that we present in the plots are linear correlations of the form Ecosystem Function ~ Diversity Metric. As assumption of normality are however not necessarily met, we present also the rank correlations:
 
 ```{r, echo = FALSE}
 
@@ -554,8 +546,8 @@ grid.arrange(G6, G7, G8, G9, ncol = 2, top = "Spearman rank correlation")
 dev.off()
 ```
 
+We can compute some summary statistics to see how many relationships are significant and how much variance is explained on average.
 
-We can compute some summary statistics to see how many relationships are significant and how much variance is explained on average 
 ```{r, echo = FALSE}
 LM_rank_sum <- LM_rank %>% ungroup %>% select( Lake, DIVmetric, estimate, p.value)
 LM_MF_rank_sum <- LM_MF_rank %>% ungroup %>% select( Lake, DIVmetric, estimate, p.value)
