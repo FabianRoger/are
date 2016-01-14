@@ -14,7 +14,7 @@ require(tidyr)
 #############
 
 # import Data
-LitDat <- read.table("Literatire_overview.txt", sep = "\t", header = T)
+LitDat <- read.table("LiteratureDocs/Literature_overview.txt", sep = "\t", header = T)
 
 # code missing values  as 0
 LitDat[ is.na(LitDat)] <- 0
