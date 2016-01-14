@@ -51,8 +51,7 @@ require(tidyr)
 ```
 
 
-
-we read in the relevant files
+Read in the relevant files:
 ```{r}
 OTU <- read.table("OTU_docs/OTU_clean.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 TAX <- read.table("OTU_docs/TAX_clean.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
@@ -62,7 +61,7 @@ ID <- read.table("ID.txt")
 
 ### seqeuncing depth 
 
-let's look at the sequencing depth of the OTU data
+Looking at the sequencing depth of the OTU data:
 
 ```{r, fig.width=5, echo=FALSE}
 OTU[, -1] %>% colSums %>% sort(., decreasing = T) %>% plot
@@ -82,10 +81,9 @@ The two samples with the lowest coverage (see above) have below <1000 reads per 
 
 ### sensitivity of diveristy estimation to sequencing depth
 
-For the remaining data set, we want to test whether the diversity estimate is sensitive to the sampling depth to sea whether we need to exclude more samples. Below, we rarefied the data set to following depth `r seq(1e3,1e4,2e3)`, calculated the effective number of species and correlated the results.
+For the remaining data set, we want to test whether the diversity estimate is sensitive to the sampling depth to see whether we need to exclude more samples. Below, we rarefy the data set to following depth `r seq(1e3,1e4,2e3)`, calculate the effective number of species and correlate the results.
 
 We calculate the effective number of species of order 1, corresponding to the exponential of the Shannon entropy. For this test we don't apply any bias correction.
-
 
 ```{r, include=FALSE, eval=TRUE}
 
@@ -140,20 +138,19 @@ pairs(DIV[,-1], lower.panel = panel.smooth, upper.panel = panel.cor, main = "div
 dev.off()
 ```
 
+We can see that the effective number of species is insensitive to sequencing depth and that the results are virtually identical irrespective of the rarefaction level or whether we use the full data set, with or without correction. The only exception is that the correction estimates high diversity for the sample `gbg12` that has only 12 reads. With such low reads, no diversity estimate can be trusted. We thus exclude that particular read.  
 
-We can see that the effective number of species is very insensitive to sequencing depth and that the results are virtually identical irrespective of the rarefaction level or whether we use the full data set, with or without correction. The only exception is that the correction estimates high diversity for the sample `gbg12`that has only 12 reads. With such low reads, no diversity estimate can be trusted, wherefore we exclude the read.  
+It is, however, unnecessary to exclude any other sample than `gbg12`. 
 
-It is however unnecessary to exclude any other sample than `gbg12`. 
-
-In an attempt to reduce a possible sampling bias but without unnecessarily discarding data, we choose the following approach:
+In an attempt to reduce a possible sampling bias, but without unnecessarily discarding data, we choose the following approach:
 
 + all samples with more than 10000 reads (`r length(which(colSums(OTU) >= 10000))` samples) are rarefied to 10000 reads.
 
 + all samples with below 10000 reads (`r length(which(colSums(OTU) < 10000))` samples) are kept as is. 
 
-+ no correction is applied as until now it is not clear if correction are accurate for sequencing data (that may contain biased estimates of singletons and doubletons as singletons have been excluded and doubletons may also represent spurious OTUs)
++ no correction is applied, because until now it is not clear if correction is accurate for sequencing data (that may contain biased estimates of singletons and doubletons as singletons have been excluded and doubletons may also represent spurious OTUs).
 
-+ the above mentioned rules are applied to both estimates, with and without the incorporation of phylogenetic diversity
++ the above mentioned rules are applied to both estimates, with and without the incorporation of phylogenetic diversity.
 
 ### effective number of species
 
@@ -181,7 +178,7 @@ DIV <- AlphaDiversity(MC, q = 1, Correction="None")$Communities %>%
   left_join(ID, .)
 ```
 
-let's have a look at the calculated diversity levels
+Let's have a look at the calculated diversity levels:
 
 ```{r, echo = FALSE}
 
@@ -199,7 +196,8 @@ ggplot(DIV, aes(x = DIL, y = effN, colour = Lake, group = Lake))+
 
 ### comparision with previous diveristy estimate *to be excluded before submission*
 
- compare with old diversity estimate
+Compare with old diversity estimate:
+
 ```{r echo = FALSE}
 DIVold <- read.table("~/Documents/01_PhD/01_Research/02_rare_Biosphere/R scripts/Diversity_5000_100p.txt")
 
@@ -254,7 +252,7 @@ ggplot(PDold, aes(x = PSEs, y = PD.y, colour = Lake, group = Lake))+
 
 ```
 
-export table with diversity metrics
+Export table with diversity metrics:
 
 ```{r, eval=TRUE}
 DIV <- select(DIV, - gbgID)
@@ -265,15 +263,13 @@ write.table(DIV, "OTU_docs/DIV.txt", sep="\t")
 
 ### heatmap of OTU composition
 
-to visualize the distribution of OTUs in the different dilutions / lakes, we make heatmap.
+To visualize the distribution of OTUs in the different dilutions/lakes, we produce a heatmap. Since we cannot possibly represent all OTUs, we only look at the OTUs that make up **at least 1 % of the total reads** in **at least 1 sample**
 
-as we cannot possibly represent all OTUs, we only look at the OTUs that make up **at least 1 % of the total reads** in 
-**at least 1 sample**
+As we work with proportions, we take the unrarefied OTU table and only exclude the sample `gbg12`:
 
-As we work with proportions, we take the unrarefied OTU table and only exclude the sample `gbg12`
 ```{r, echo = F, fig.height=24, fig.width=12}
-# to keep as much taxonomic information as possibel we will carry over the TAX ID's to lower levels for those OTU'S where a  lower-level
-# assignemnt isn't possibel
+# to keep as much taxonomic information as possible we carry over the TAX ID's to lower levels for those OTU'S where a lower-level
+# assignemnt isn't possible
 
 rownames(TAX) <- TAX$OTU.ID
 TAX <- select(TAX, -OTU.ID) %>% as.matrix
@@ -287,12 +283,12 @@ for (i in 2:ncol(TAX)){
 
 rownames(ID) <- ID$gbgID
 
-# subset and transform OTU-table
-OTUp <- OTU[, which(colnames(OTU) != "gbg12")] #exclude sample with too many reads
-OTUp <- apply(OTUp, 2, function(x) (x / sum( x)) * 100) #transform reads into percentages
+# subset and transform OTU table
+OTUp <- OTU[, which(colnames(OTU) != "gbg12")] # exclude sample with too many reads
+OTUp <- apply(OTUp, 2, function(x) (x / sum( x)) * 100) # transform reads into percentages
 
-#subset to OTUs that have min 1% of abundance in at least 1 sample
-OTU_1p <- which( apply(OTUp, 1, function(x) max(x) >= 1) == TRUE) #list of OTUs
+# subset to OTUs that have min 1% of abundance in at least 1 sample
+OTU_1p <- which( apply(OTUp, 1, function(x) max(x) >= 1) == TRUE) # list of OTUs
 
 
 Phy_obj <- phyloseq(otu_table(OTUp[ OTU_1p, ], taxa_are_rows = TRUE),
@@ -318,7 +314,7 @@ HeatMap_1p +
 ```
 
 
-To get a clearer picture of the differences between the lakes, we look at the average abundance of each OTU, over the three sampling dates
+To get a clearer picture of the differences between the lakes, we look at the average abundance of each OTU, over the three sampling dates. 
 
 ```{r, echo = FALSE, fig.height=12, fig.width=10}
 
@@ -342,8 +338,8 @@ avOTU <- ID %>%
 row.names(avOTU) <- avOTU$OTU.ID
 avOTU <- select(avOTU, -OTU.ID)
 
-avOTUp <- apply(avOTU, 2, function(x) (x / sum( x)) * 100) #transform reads into percentages
-avOTU_1p <- which( apply(avOTUp, 1, function(x) max(x) >= 1) == TRUE) #list of OTUs
+avOTUp <- apply(avOTU, 2, function(x) (x / sum( x)) * 100) # transform reads into percentages
+avOTU_1p <- which( apply(avOTUp, 1, function(x) max(x) >= 1) == TRUE) # list of OTUs
 
 Phy_obj_av <- phyloseq(otu_table(avOTUp[ avOTU_1p, ], taxa_are_rows = TRUE),
                     tax_table(TAX),
